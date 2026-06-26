@@ -3,7 +3,8 @@
 // Renders the manifest with Remotion. Zero-key: code-source scenes need no assets/keys.
 import { readFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REMOTION = resolve(HERE, "../../remotion");
@@ -37,8 +38,19 @@ async function main() {
     (s.sfx ?? []).forEach((p) => stage(projDir, p));
   }
 
-  const { bundle } = await import("@remotion/bundler");
-  const { selectComposition, renderMedia } = await import("@remotion/renderer");
+  // @remotion/* live in remotion/node_modules; this adapter sits outside it.
+  const rrequire = createRequire(join(REMOTION, "package.json"));
+  const bundlerMod = await import(
+    pathToFileURL(rrequire.resolve("@remotion/bundler")).href
+  );
+  const rendererMod = await import(
+    pathToFileURL(rrequire.resolve("@remotion/renderer")).href
+  );
+  const bundle = bundlerMod.bundle ?? bundlerMod.default?.bundle;
+  const selectComposition =
+    rendererMod.selectComposition ?? rendererMod.default?.selectComposition;
+  const renderMedia =
+    rendererMod.renderMedia ?? rendererMod.default?.renderMedia;
 
   const serveUrl = await bundle({
     entryPoint: join(REMOTION, "src/index.ts"),

@@ -17,6 +17,8 @@ remotion/out/
 *.webm
 *.wav
 *.mp3
+*.png
+examples/out/
 
 # Node
 node_modules/
