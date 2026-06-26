@@ -13,7 +13,9 @@ gate come BEFORE any expensive generation call.**
 1. Invoke the **director** and **screenwriter** agents (Task tool) on the project brief.
    They produce the manifest: `intent`, `hook` (must work muted), per-scene `tts_script`
    (exact narration) and `visual_brief` (semantic art direction, never a keyword).
-   Apply `skills/quality-rules` — hook in first 3s, motivated b-roll, pacing, shot variety.
+   Apply `skills/quality-rules` — hook in first 3s, motivated b-roll, pacing, shot variety,
+   and a **`/deslop` pass** on all narration + on-screen text (strip AI-writing tells before
+   the manifest is locked — §8).
 2. Validate the manifest against `skills/manifest/schema/manifest.schema.json`.
 
 ## Phase B — HUMAN GATE (the reversibility checkpoint)

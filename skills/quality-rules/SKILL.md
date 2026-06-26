@@ -47,6 +47,25 @@ correction. (Premium finishing tier: DaVinci pass for grade/HDR/broadcast.)
 ≥3 shot types per 60s (wide establishing + medium context + close emphasis). Vary camera
 height (eye + one low/high). Mix static / push / handheld.
 
+## 8. Script & on-screen text — strip the AI tells
+
+The narration (`tts_script`), hook, and on-screen copy are where slop creeps back in even when
+the visuals are clean. Run every line through **`/deslop`** (a 22-pattern AI-writing check)
+before the manifest is locked. If `/deslop` isn't installed, apply this BLOCK-level subset:
+
+- **AI-tell words** — delve, landscape, realm, leverage (verb), robust, utilize, elevate,
+  foster, streamline, cutting-edge, game-changer, deep dive → plain English.
+- **Em-dashes** (more than a couple per script) → commas, colons, or split the sentence.
+- **Throat-clearing** ("Let's dive in", "In this video…") → open on the content.
+- **Gift-wrapped endings** ("In summary", "The bottom line", "…on purpose, not by accident")
+  → end on the insight, not a bow.
+- **Tricolon / rule-of-threes** ("flat, generic, forgettable") → one sharp claim beats three weak ones.
+- **Corrective antithesis / negation framing** ("It's not X, it's Y", "isn't just about…")
+  → state the positive directly.
+
+Spoken copy especially: write for the ear, not the textbook. (Full skill + the other 16
+patterns: `/deslop`, MIT — github.com/eprouveze/claude-skills.)
+
 ## The divide (what the Editor scores against)
 | Slop | Incredible |
 |---|---|

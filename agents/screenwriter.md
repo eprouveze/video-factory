@@ -20,4 +20,9 @@ For each scene:
 
 Avoid the slop tells in `skills/quality-rules` (flat delivery, generic b-roll, text-heavy
 overlays compensating for weak visuals). Keep `tts_script` and `visual_brief` consistent —
-the viewer should see what they hear. Output: the updated manifest.
+the viewer should see what they hear.
+
+**Deslop the words.** Run the narration, hook, and on-screen copy through `/deslop` (or
+`skills/quality-rules` §8) before finalizing — AI scripts carry the same tells as AI prose
+(em-dashes, tricolons, gift-wrapped endings, AI-tell words). The text layer is where slop
+returns even when the visuals are clean. Output: the updated manifest.
