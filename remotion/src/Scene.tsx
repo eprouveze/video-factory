@@ -45,6 +45,9 @@ export const Scene = ({ scene, brand }: any) => {
     <AbsoluteFill style={{ backgroundColor: bg }}>
       {visual}
       {scene._audio ? <Audio src={asset(scene._audio)} /> : null}
+      {(scene._sfx ?? []).map((p: string, i: number) => (
+        <Audio key={i} src={asset(p)} volume={brand?.sfx_volume ?? 0.7} />
+      ))}
       {scene.captions !== "none" && scene.word_timings?.length ? (
         <Captions words={scene.word_timings} brand={brand} />
       ) : null}

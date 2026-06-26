@@ -15,12 +15,36 @@ const asset = (p: string) => (p?.startsWith("http") ? p : staticFile(p));
 export const Video = ({ manifest, format }: any) => {
   const { fps } = useVideoConfig();
   const scenes = manifest?.scenes ?? [];
-  // music bed: one low-volume track under the whole video (sound design, layer 4)
-  const musicVol = manifest?.brand?.music_volume ?? 0.18;
+
+  // music bed with ducking: drop under narration, full elsewhere (sound design)
+  const fullVol = manifest?.brand?.music_volume ?? 0.2;
+  const duckVol = manifest?.brand?.music_duck_volume ?? 0.07;
+  const RAMP = Math.max(1, Math.round(0.2 * fps));
+  let acc = 0;
+  const duckRanges: [number, number][] = [];
+  for (const s of scenes) {
+    const durF = Math.max(1, Math.round((sceneMs(s) / 1000) * fps));
+    if (s._audio) duckRanges.push([acc, acc + durF]);
+    acc += durF;
+  }
+  const musicVolume = (f: number) => {
+    let duck = 0;
+    for (const [a, b] of duckRanges) {
+      if (f >= a && f < b) {
+        duck = 1;
+        break;
+      }
+      if (f >= a - RAMP && f < a)
+        duck = Math.max(duck, (f - (a - RAMP)) / RAMP);
+      if (f >= b && f < b + RAMP) duck = Math.max(duck, 1 - (f - b) / RAMP);
+    }
+    return fullVol + (duckVol - fullVol) * duck;
+  };
+
   return (
     <AbsoluteFill>
       {manifest?.music ? (
-        <Audio src={asset(manifest.music)} volume={musicVol} />
+        <Audio src={asset(manifest.music)} volume={musicVolume} />
       ) : null}
       <Series>
         {scenes.map((s: any) => {

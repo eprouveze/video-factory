@@ -35,8 +35,8 @@ const scenes = manifest.scenes || [];
 for (let i = 0; i < scenes.length; i++) {
   const s = scenes[i];
 
-  // narration — skip silent / clip-only scenes
-  if (s.tts_script && s.tts_script.trim()) {
+  // narration — skip silent / clip-only scenes (idempotent: skip if already produced)
+  if (s.tts_script && s.tts_script.trim() && !s._audio) {
     const r = tts({
       text: s.tts_script,
       tone,
@@ -103,6 +103,29 @@ for (let i = 0; i < scenes.length; i++) {
     process.stderr.write(
       `  ${s.id}: clip via ${prov}${refFrame ? " (i2v from ref)" : ""} · ${r.duration_ms}ms\n`,
     );
+  }
+
+  // sfx — generate one-shots from briefs (s.sfx: string[]) → s._sfx (paths)
+  if (Array.isArray(s.sfx) && s.sfx.length && !s._sfx) {
+    s._sfx = [];
+    const sprov = reg.capabilities.sfx.default;
+    s.sfx.forEach((brief, k) => {
+      try {
+        execFileSync("node", [adapterPath("sfx", sprov)], {
+          input: JSON.stringify({
+            brief,
+            out_path: join(projDir, "audio", `${s.id}-sfx${k}.mp3`),
+          }),
+          encoding: "utf8",
+        });
+        s._sfx.push(`audio/${s.id}-sfx${k}.mp3`);
+      } catch (e) {
+        process.stderr.write(
+          `  ${s.id}: sfx skipped: ${String(e).slice(0, 80)}\n`,
+        );
+      }
+    });
+    process.stderr.write(`  ${s.id}: sfx ×${s._sfx.length} via ${sprov}\n`);
   }
 }
 

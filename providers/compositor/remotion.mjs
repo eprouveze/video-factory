@@ -36,7 +36,7 @@ async function main() {
     stage(projDir, s._audio);
     stage(projDir, s.visual?.asset);
     stage(projDir, s.music);
-    (s.sfx ?? []).forEach((p) => stage(projDir, p));
+    (s._sfx ?? []).forEach((p) => stage(projDir, p));
   }
 
   // @remotion/* live in remotion/node_modules; this adapter sits outside it.
