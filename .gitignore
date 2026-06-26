@@ -1,0 +1,26 @@
+# Secrets — NEVER commit. The :setup wizard writes here.
+.video-factory/
+**/secrets.json
+**/.env
+**/.env.*
+
+# Per-project working dirs (assets are large + regenerable)
+**/assets/
+**/audio/
+**/clips/
+**/output/
+remotion/out/
+
+# Rendered media
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store

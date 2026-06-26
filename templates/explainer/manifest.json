@@ -1,0 +1,60 @@
+{
+  "version": "1",
+  "title": "REPLACE-ME",
+  "intent": "REPLACE-ME — one sentence: who this is for and what it must achieve.",
+  "format": ["16:9"],
+  "fps": 30,
+  "brand": {
+    "palette": ["#0b0b0f", "#ffd24a"],
+    "font": "Inter, system-ui, sans-serif",
+    "tone": "calm authoritative",
+    "music_style": "warm lo-fi piano, restrained"
+  },
+  "hook": {
+    "type": "bold_claim",
+    "text": "REPLACE-ME — must land the idea MUTED. Never a logo."
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "title": "Hook",
+      "tts_script": "REPLACE-ME — the exact opening line. Write for the ear.",
+      "duration_estimate_s": 3,
+      "visual": { "source": "code", "component": "TitleCard" },
+      "captions": "auto"
+    },
+    {
+      "id": "s2",
+      "title": "Problem",
+      "tts_script": "REPLACE-ME — name the problem the viewer feels.",
+      "duration_estimate_s": 6,
+      "visual": {
+        "source": "clip",
+        "visual_brief": "REPLACE-ME — SEMANTIC art direction, not a keyword. Name subject, composition, light, motion, mood.",
+        "shot": { "size": "medium", "angle": "eye", "motion": "push" }
+      },
+      "captions": "auto",
+      "provider_assignments": { "tts": "elevenlabs", "clip": "fal-veo" }
+    },
+    {
+      "id": "s3",
+      "title": "Solution",
+      "tts_script": "REPLACE-ME — the turn. What changes.",
+      "duration_estimate_s": 8,
+      "visual": {
+        "source": "code",
+        "component": "StatCard",
+        "props": { "value": "REPLACE", "label": "REPLACE" }
+      },
+      "captions": "auto"
+    },
+    {
+      "id": "s4",
+      "title": "Close",
+      "tts_script": "REPLACE-ME — the one line you want them to remember.",
+      "duration_estimate_s": 3,
+      "visual": { "source": "code", "component": "TitleCard" },
+      "captions": "auto"
+    }
+  ]
+}

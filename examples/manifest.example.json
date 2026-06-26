@@ -1,0 +1,51 @@
+{
+  "version": "1",
+  "title": "video-factory-demo",
+  "intent": "Show, in 15 seconds, why Video Factory produces non-slop video — renders zero-key from code-animated scenes.",
+  "format": ["16:9", "9:16"],
+  "fps": 30,
+  "brand": {
+    "palette": ["#0b0b0f", "#ffd24a"],
+    "font": "Inter, system-ui, sans-serif",
+    "tone": "calm authoritative",
+    "music_style": "warm lo-fi piano, restrained"
+  },
+  "hook": {
+    "type": "bold_claim",
+    "text": "Most AI video looks like slop. Here's the fix."
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "title": "Hook",
+      "tts_script": "Most AI video looks like slop — flat, generic, forgettable.",
+      "duration_estimate_s": 3,
+      "visual": { "source": "code", "component": "TitleCard" }
+    },
+    {
+      "id": "s2",
+      "title": "The stat",
+      "tts_script": "Fifty to sixty percent of viewers leave in the first three seconds.",
+      "duration_estimate_s": 4,
+      "visual": {
+        "source": "code",
+        "component": "StatCard",
+        "props": { "value": "3s", "label": "where most viewers leave" }
+      }
+    },
+    {
+      "id": "s3",
+      "title": "The fix",
+      "tts_script": "Video Factory writes a reviewable plan first, then assembles every layer on purpose.",
+      "duration_estimate_s": 5,
+      "visual": { "source": "code", "component": "TitleCard" }
+    },
+    {
+      "id": "s4",
+      "title": "Close",
+      "tts_script": "Incredible video, on purpose — not by accident.",
+      "duration_estimate_s": 3,
+      "visual": { "source": "code", "component": "TitleCard" }
+    }
+  ]
+}

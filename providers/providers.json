@@ -1,0 +1,160 @@
+{
+  "$comment": "Capability -> adapter registry. The orchestrator NEVER calls a provider directly; it calls the adapter registered here for a capability. Swap a provider by changing `default` (or run `/video-factory:setup`). Each adapter satisfies the matching contract in CONTRACTS.md. `tier` documents what's needed: 'core' = no key; 'plugin' = needs a key/credential.",
+  "capabilities": {
+    "tts": {
+      "default": "elevenlabs",
+      "fallback": "say",
+      "adapters": {
+        "elevenlabs": {
+          "path": "providers/tts/elevenlabs.mjs",
+          "tier": "plugin",
+          "needs": ["ELEVENLABS_API_KEY"]
+        },
+        "say": {
+          "path": "providers/tts/say.sh",
+          "tier": "core",
+          "needs": [],
+          "note": "macOS built-in `say`; no word timings (captions fall back to estimated)."
+        }
+      }
+    },
+    "stt": {
+      "default": "whisperx",
+      "adapters": {
+        "deepgram": {
+          "path": "providers/stt/deepgram.mjs",
+          "tier": "plugin",
+          "needs": ["DEEPGRAM_API_KEY"]
+        },
+        "whisperx": {
+          "path": "providers/stt/whisperx.sh",
+          "tier": "plugin",
+          "needs": ["python+whisperx (local GPU/CPU)"]
+        }
+      }
+    },
+    "image": {
+      "default": "fal-flux",
+      "adapters": {
+        "fal-flux": {
+          "path": "providers/image/fal-flux.mjs",
+          "tier": "plugin",
+          "needs": ["FAL_KEY"]
+        },
+        "ideogram": {
+          "path": "providers/image/ideogram.mjs",
+          "tier": "plugin",
+          "needs": ["IDEOGRAM_API_KEY"],
+          "note": "Use when the image must contain readable text."
+        }
+      }
+    },
+    "clip": {
+      "default": "fal-veo",
+      "adapters": {
+        "fal-veo": {
+          "path": "providers/clip/fal-veo.mjs",
+          "tier": "plugin",
+          "needs": ["FAL_KEY"],
+          "note": "Veo 3.1 Fast, native audio, native 9:16."
+        },
+        "fal-kling": {
+          "path": "providers/clip/fal-kling.mjs",
+          "tier": "plugin",
+          "needs": ["FAL_KEY"],
+          "note": "Longer / realistic human motion."
+        }
+      }
+    },
+    "music": {
+      "default": "elevenlabs-music",
+      "adapters": {
+        "elevenlabs-music": {
+          "path": "providers/music/elevenlabs.mjs",
+          "tier": "plugin",
+          "needs": ["ELEVENLABS_API_KEY"]
+        }
+      }
+    },
+    "sfx": {
+      "default": "elevenlabs-sfx",
+      "adapters": {
+        "elevenlabs-sfx": {
+          "path": "providers/sfx/elevenlabs.mjs",
+          "tier": "plugin",
+          "needs": ["ELEVENLABS_API_KEY"]
+        },
+        "freesound": {
+          "path": "providers/sfx/freesound.mjs",
+          "tier": "plugin",
+          "needs": ["FREESOUND_API_KEY"],
+          "note": "CC library; free; saves generation credits."
+        }
+      }
+    },
+    "avatar": {
+      "default": null,
+      "adapters": {
+        "heygen": {
+          "path": "providers/avatar/heygen.mjs",
+          "tier": "plugin",
+          "needs": ["HEYGEN_API_KEY", "HEYGEN_AVATAR_ID"],
+          "note": "Your own avatar clone (talking_photo)."
+        },
+        "sync": {
+          "path": "providers/avatar/sync.mjs",
+          "tier": "plugin",
+          "needs": ["SYNC_API_KEY"],
+          "note": "Lip-sync onto real footage of you."
+        }
+      }
+    },
+    "reframe": {
+      "default": "remotion",
+      "adapters": {
+        "remotion": {
+          "path": "providers/reframe/remotion.mjs",
+          "tier": "core",
+          "needs": [],
+          "note": "Render natively per-aspect in the compositor (no reframe step)."
+        },
+        "reap": {
+          "path": "providers/reframe/reap.mjs",
+          "tier": "plugin",
+          "needs": ["REAP_API_KEY"],
+          "note": "Subject-tracked reframe of existing footage."
+        }
+      }
+    },
+    "compositor": {
+      "default": "remotion",
+      "adapters": {
+        "remotion": {
+          "path": "providers/compositor/remotion.mjs",
+          "tier": "core",
+          "needs": ["node"]
+        }
+      }
+    },
+    "finish": {
+      "default": "ffmpeg-lut",
+      "adapters": {
+        "ffmpeg-lut": {
+          "path": "providers/finish/ffmpeg-lut.mjs",
+          "tier": "core",
+          "needs": ["ffmpeg"],
+          "note": "Pre-arranged looks (cinematic/warm-doc/punchy-social/noir) via ffmpeg filter chains or .cube LUTs. Headless, no DaVinci."
+        },
+        "davinci": {
+          "path": "providers/finish/davinci.py",
+          "tier": "premium",
+          "needs": [
+            "DaVinci Resolve Studio + display/dummy-plug box",
+            "saved PowerGrade per look"
+          ],
+          "note": "DEFERRED (see docs/ROADMAP.md). Scripts the Resolve API to apply a PowerGrade preset + AI ops (Super Scale, Magic Mask, noise, HDR) to ONE clean master on a dedicated grading box. Semi-automated, NOT headless/cloud; runs under a watchdog (modal-dialog risk)."
+        }
+      }
+    }
+  }
+}

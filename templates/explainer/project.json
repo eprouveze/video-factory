@@ -1,0 +1,7 @@
+{
+  "template": "explainer",
+  "status": "draft",
+  "created": null,
+  "scenes": {},
+  "_note": "Reconciliation ledger: the pipeline records per-scene produced state here (audio, asset, review verdict) so a crash resumes instead of restarting. status: draft -> approved -> producing -> composed."
+}

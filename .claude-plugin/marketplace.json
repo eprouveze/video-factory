@@ -1,0 +1,14 @@
+{
+  "name": "eprouveze-video-factory",
+  "owner": {
+    "name": "Emmanuel Prouvèze",
+    "url": "https://github.com/eprouveze"
+  },
+  "plugins": [
+    {
+      "name": "video-factory",
+      "source": "./",
+      "description": "Agent-driven video production with swappable provider components and a Remotion compositor."
+    }
+  ]
+}
