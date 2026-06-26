@@ -20,5 +20,7 @@ Run the `compositor` adapter (Remotion) over the project's `manifest.json`.
    The compositor times each scene from the **measured** `duration_ms` (falls back to
    `duration_estimate_s` for un-produced/zero-key scenes), layers audio + word-timed captions,
    and renders at the format's native resolution (16:9→1920×1080, 9:16→1080×1920, 1:1→1080×1080).
+   For **4K**, add `"resolution":"4k"` (or `"scale":2`) → 3840×2160 / 2160×3840. Text stays crisp;
+   generated b-roll is upscaled from its source res — set `clip.veo_resolution:"1080p"` for sharper 4K.
 4. Report each output path and its duration. If a scene's asset is missing, render its
    code/title-card fallback and warn (don't abort the whole video).

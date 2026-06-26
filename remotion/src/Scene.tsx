@@ -13,14 +13,10 @@ export const Scene = ({ scene, brand }: any) => {
   let visual: any;
   if (v.source === "code") {
     const C = components[v.component] ?? components.TitleCard;
-    visual = (
-      <C
-        {...(v.props || {})}
-        title={scene.title}
-        text={scene.tts_script}
-        brand={brand}
-      />
-    );
+    // pass the narration as a default body; let the agent's props (headline/subtext/
+    // eyebrow/value/label/bg/accent) override. Do NOT pass scene.title — it's an
+    // internal label, not on-screen copy.
+    visual = <C text={scene.tts_script} {...(v.props || {})} brand={brand} />;
   } else if (v.asset && v.source === "image") {
     visual = (
       <Img
@@ -38,7 +34,7 @@ export const Scene = ({ scene, brand }: any) => {
   } else {
     // Degrade gracefully: no produced asset yet → title-card fallback.
     const C = components.TitleCard;
-    visual = <C title={scene.title} text={scene.tts_script} brand={brand} />;
+    visual = <C text={scene.tts_script} brand={brand} />;
   }
 
   return (

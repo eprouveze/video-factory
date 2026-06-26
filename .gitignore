@@ -24,6 +24,7 @@ projects/
 # Node
 node_modules/
 npm-debug.log*
+.remotion/
 
 # OS
 .DS_Store
