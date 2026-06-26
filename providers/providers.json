@@ -50,8 +50,20 @@
       }
     },
     "clip": {
-      "default": "fal-veo",
+      "default": "veo",
       "adapters": {
+        "veo": {
+          "path": "providers/clip/veo.mjs",
+          "tier": "plugin",
+          "needs": ["GEMINI_API_KEY"],
+          "note": "Veo 3.1 fast via Gemini API (direct). predictLongRunning + poll + download. VERIFIED."
+        },
+        "kling": {
+          "path": "providers/clip/kling.mjs",
+          "tier": "plugin",
+          "needs": ["clip.kling_api_key"],
+          "note": "Kling official single-key API (direct). Auth+submit+error VERIFIED; needs account credits to produce."
+        },
         "fal-veo": {
           "path": "providers/clip/fal-veo.mjs",
           "tier": "plugin",

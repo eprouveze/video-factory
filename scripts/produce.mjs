@@ -25,31 +25,59 @@ const tts = (req) =>
     }),
   );
 
+const reg = JSON.parse(
+  readFileSync(join(ROOT, "providers/providers.json"), "utf8"),
+);
+const adapterPath = (cap, name) =>
+  join(ROOT, reg.capabilities[cap].adapters[name].path);
+
 const scenes = manifest.scenes || [];
 for (let i = 0; i < scenes.length; i++) {
   const s = scenes[i];
-  const r = tts({
-    text: s.tts_script,
-    tone,
-    prev_text: scenes[i - 1]?.tts_script,
-    next_text: scenes[i + 1]?.tts_script,
-    out_path: join(projDir, "audio", `${s.id}.mp3`),
-  });
-  s._audio = `audio/${s.id}.mp3`; // relative to projDir; compositor stages it into public/
-  s.word_timings = r.word_timings;
-  s.duration_ms = r.duration_ms; // TTS-first write-back
 
-  // quality gate: words-per-minute
-  const words = (s.tts_script.match(/\S+/g) || []).length;
-  const wpm = words / (r.duration_ms / 60000);
-  const [lo, hi] = s.quality_gate?.speaking_rate_wpm || [120, 180];
-  const flag =
-    wpm < lo || wpm > hi
-      ? `  ⚠️ WPM ${wpm.toFixed(0)} outside [${lo},${hi}]`
-      : "";
-  process.stderr.write(
-    `  ${s.id}: ${r.duration_ms}ms · ${r.word_timings.length} words · ${wpm.toFixed(0)} wpm${flag}\n`,
-  );
+  // narration — skip silent / clip-only scenes
+  if (s.tts_script && s.tts_script.trim()) {
+    const r = tts({
+      text: s.tts_script,
+      tone,
+      prev_text: scenes[i - 1]?.tts_script,
+      next_text: scenes[i + 1]?.tts_script,
+      out_path: join(projDir, "audio", `${s.id}.mp3`),
+    });
+    s._audio = `audio/${s.id}.mp3`; // relative to projDir; compositor stages it into public/
+    s.word_timings = r.word_timings;
+    s.duration_ms = r.duration_ms; // TTS-first write-back
+    const words = (s.tts_script.match(/\S+/g) || []).length;
+    const wpm = words / (r.duration_ms / 60000);
+    const [lo, hi] = s.quality_gate?.speaking_rate_wpm || [120, 180];
+    const flag =
+      wpm < lo || wpm > hi
+        ? `  ⚠️ WPM ${wpm.toFixed(0)} outside [${lo},${hi}]`
+        : "";
+    process.stderr.write(
+      `  ${s.id}: tts ${r.duration_ms}ms · ${r.word_timings.length} words · ${wpm.toFixed(0)} wpm${flag}\n`,
+    );
+  }
+
+  // generative b-roll — clip scenes with no supplied asset
+  if (s.visual?.source === "clip" && !s.visual.asset) {
+    const prov = s.provider_assignments?.clip || reg.capabilities.clip.default;
+    const r = JSON.parse(
+      execFileSync("node", [adapterPath("clip", prov)], {
+        input: JSON.stringify({
+          brief: s.visual.visual_brief || s.title || s.tts_script,
+          aspect: manifest.format?.[0] || "16:9",
+          duration_s: s.duration_ms ? Math.round(s.duration_ms / 1000) : 6,
+          ref_frame: s.continuity_refs?.[0],
+          out_path: join(projDir, "clips", `${s.id}.mp4`),
+        }),
+        encoding: "utf8",
+      }),
+    );
+    s.visual.asset = `clips/${s.id}.mp4`;
+    if (!s.duration_ms) s.duration_ms = r.duration_ms;
+    process.stderr.write(`  ${s.id}: clip via ${prov} · ${r.duration_ms}ms\n`);
+  }
 }
 
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
