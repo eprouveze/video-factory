@@ -105,6 +105,33 @@ for (let i = 0; i < scenes.length; i++) {
     );
   }
 
+  // generative image scenes (source:image, no supplied asset).
+  // Text-heavy briefs (charts/labels/UI/words) auto-route to gpt-image — far better at text-in-image.
+  if (s.visual?.source === "image" && !s.visual.asset) {
+    const brief = s.visual.visual_brief || s.title || "";
+    const textHeavy =
+      /\b(text|label|chart|diagram|graph|word|title|caption|number|stat|sign|logo|ui|screen|interface|headline|menu|axis|radar)\b/i.test(
+        brief,
+      );
+    let iprov = s.provider_assignments?.image || reg.capabilities.image.default;
+    if (textHeavy && reg.capabilities.image.adapters["gpt-image"])
+      iprov = "gpt-image";
+    const ir = JSON.parse(
+      execFileSync("node", [adapterPath("image", iprov)], {
+        input: JSON.stringify({
+          brief,
+          aspect: manifest.format?.[0] || "16:9",
+          out_path: join(projDir, "assets", `${s.id}.png`),
+        }),
+        encoding: "utf8",
+      }),
+    );
+    s.visual.asset = `assets/${s.id}.png`;
+    process.stderr.write(
+      `  ${s.id}: image via ${iprov}${textHeavy ? " (text-heavy)" : ""}\n`,
+    );
+  }
+
   // sfx — generate one-shots from briefs (s.sfx: string[]) → s._sfx (paths)
   if (Array.isArray(s.sfx) && s.sfx.length && !s._sfx) {
     s._sfx = [];

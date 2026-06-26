@@ -25,4 +25,14 @@ the viewer should see what they hear.
 **Deslop the words.** Run the narration, hook, and on-screen copy through `/deslop` (or
 `skills/quality-rules` §8) before finalizing — AI scripts carry the same tells as AI prose
 (em-dashes, tricolons, gift-wrapped endings, AI-tell words). The text layer is where slop
-returns even when the visuals are clean. Output: the updated manifest.
+returns even when the visuals are clean.
+
+**Provider-aware briefs:**
+- **Clip briefs** (`source: clip`) must avoid legible on-screen text, words, or UI — generative
+  video renders text as gibberish. Prefer macro, abstract, or shallow-focus subjects; let the
+  captions carry the words.
+- **Text-heavy stills** (`source: image` with charts, labels, diagrams, numbers) — set that
+  scene's `provider_assignments.image: "gpt-image"`; it renders readable text far better than
+  the default.
+
+Output: the updated manifest.

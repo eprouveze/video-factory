@@ -22,3 +22,7 @@ Rules: read provider choices from `providers.json` (per-scene `provider_assignme
 Adapters take JSON on stdin, return JSON on stdout (see `providers/CONTRACTS.md`). If a tier
 isn't configured, use the core fallback and note it — don't fail the run. Never put a secret
 on a command line.
+
+For `source:image` scenes whose brief involves text (charts, labels, diagrams, numbers), prefer
+the `gpt-image` provider — it renders readable text far better than the default. Never send a
+legible-text request into a `clip` brief; generative video can't render real words.

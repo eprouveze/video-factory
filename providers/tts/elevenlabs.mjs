@@ -3,7 +3,13 @@
 // stdin  {text, voice?, tone?, prev_text?, next_text?, out_path}
 // stdout {audio_path, duration_ms, word_timings:[{word,start_ms,end_ms}]}
 // Secrets from env ELEVENLABS_API_KEY or .video-factory/config.json — never from args/JSON.
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  renameSync,
+} from "node:fs";
 import { dirname, resolve, join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -108,6 +114,29 @@ if (cur)
     start_ms: Math.round((curStart ?? 0) * 1000),
     end_ms: Math.round((curEnd ?? 0) * 1000),
   });
+
+// trailing-silence trim (config tts.trim_silence, default on). Trailing-only keeps
+// word_timings valid (they are speech-internal). Leaves a ~0.12s natural tail.
+if (cfg.tts?.trim_silence !== false) {
+  try {
+    const tmp = out.replace(/(\.[^.]+)$/, ".trim$1");
+    execFileSync(
+      "ffmpeg",
+      [
+        "-y",
+        "-loglevel",
+        "error",
+        "-i",
+        out,
+        "-af",
+        "areverse,silenceremove=start_periods=1:start_silence=0.12:start_threshold=-45dB,areverse",
+        tmp,
+      ],
+      { encoding: "utf8" },
+    );
+    renameSync(tmp, out);
+  } catch {}
+}
 
 // duration measured via ffprobe (not estimated)
 let duration_ms = 0;
