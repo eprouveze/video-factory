@@ -16,18 +16,18 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
 - ✅ Encoded quality rules + adversarial Editor review
 - ✅ `finish` core looks (cinematic / warm-doc / punchy-social / noir, ffmpeg)
 - ✅ Zero-key TTS adapter (`say`)
-- 🟡 ElevenLabs TTS adapter (word timings → animated captions)
-- 🟡 `:setup` wizard with per-provider validation
-- ⬜ One golden render verified on M4 (the demo manifest → MP4)
+- ✅ ElevenLabs TTS adapter (word timings → animated captions)
+- ✅ `:setup` config mechanism (key + default voice; gitignored config verified)
+- ✅ Golden render verified (16:9 + 9:16, brand font, ffprobe)
 
 ## Phase 0.2 — Generative b-roll + sound
 **Goal:** real footage + score, with the reference-frame discipline that controls cost/drift.
 
-- ⬜ `image` adapter (FLUX via fal.ai) + reference-frame locking
-- ⬜ `clip` adapters (Veo 3.1 Fast, Kling) via fal.ai
-- ⬜ `music` + `sfx` adapters (ElevenLabs) with ducking applied in the compositor
-- ⬜ `stt` adapter (Deepgram / WhisperX) for word-level captions when TTS lacks timings
-- ⬜ Per-scene Editor review wired into the production loop (regenerate-on-fail)
+- ✅ `image` adapter (Imagen + gpt-image-2, **direct keys** — no fal markup) + reference-frame locking
+- ✅ `clip` adapters — Veo 3.1 fast (direct, Gemini API) ✅; Kling (direct, single-key) ✅ *(needs account credits to produce)*
+- ✅ `music` + `sfx` adapters (ElevenLabs) + music-bed **ducking** in the compositor
+- 🔭 `stt` adapter (Deepgram / WhisperX) for captions when TTS lacks timings — deferred
+- 🟡 Editor agent defined; auto-regenerate-on-fail loop not yet wired into production
 
 ## Phase 0.3 — Avatar + reframe
 **Goal:** your-own-avatar talking head where wanted; clean multi-aspect.
