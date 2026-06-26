@@ -31,6 +31,7 @@ async function main() {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const format = req.format || manifest.format?.[0] || "16:9";
 
+  stage(projDir, manifest.music); // top-level music bed
   for (const s of manifest.scenes ?? []) {
     stage(projDir, s._audio);
     stage(projDir, s.visual?.asset);

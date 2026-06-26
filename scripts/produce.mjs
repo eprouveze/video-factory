@@ -106,5 +106,33 @@ for (let i = 0; i < scenes.length; i++) {
   }
 }
 
+// music bed for the whole video (sound design — layer 4)
+if (!manifest.music) {
+  const total = scenes.reduce(
+    (a, s) => a + (s.duration_ms ?? (s.duration_estimate_s ?? 4) * 1000),
+    0,
+  );
+  const musicBrief =
+    manifest.brand?.music_style ||
+    "calm cinematic underscore, subtle and unobtrusive";
+  const mprov = reg.capabilities.music.default;
+  try {
+    const mr = JSON.parse(
+      execFileSync("node", [adapterPath("music", mprov)], {
+        input: JSON.stringify({
+          brief: musicBrief,
+          duration_ms: total,
+          out_path: join(projDir, "audio", "music.mp3"),
+        }),
+        encoding: "utf8",
+      }),
+    );
+    manifest.music = "audio/music.mp3";
+    process.stderr.write(`  music: ${mprov} · ${mr.duration_ms}ms\n`);
+  } catch (e) {
+    process.stderr.write(`  music skipped: ${String(e).slice(0, 120)}\n`);
+  }
+}
+
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
 process.stdout.write(`produced ${scenes.length} scenes → ${manifestPath}\n`);
