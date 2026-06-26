@@ -34,8 +34,20 @@
       }
     },
     "image": {
-      "default": "fal-flux",
+      "default": "gemini-imagen",
       "adapters": {
+        "gemini-imagen": {
+          "path": "providers/image/gemini.mjs",
+          "tier": "plugin",
+          "needs": ["GEMINI_API_KEY"],
+          "note": "Imagen 4 fast via the Gemini API (direct, reuses the Veo key). VERIFIED."
+        },
+        "gpt-image": {
+          "path": "providers/image/gpt-image.mjs",
+          "tier": "plugin",
+          "needs": ["OPENAI_API_KEY"],
+          "note": "OpenAI gpt-image-2. VERIFIED. Strong prompt adherence + text-in-image."
+        },
         "fal-flux": {
           "path": "providers/image/fal-flux.mjs",
           "tier": "plugin",
