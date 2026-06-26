@@ -61,14 +61,38 @@ for (let i = 0; i < scenes.length; i++) {
 
   // generative b-roll — clip scenes with no supplied asset
   if (s.visual?.source === "clip" && !s.visual.asset) {
+    const brief = s.visual.visual_brief || s.title || s.tts_script;
+    const aspect = manifest.format?.[0] || "16:9";
+
+    // reference-frame locking: generate a still and seed the clip with it (i2v).
+    // Locks composition/look before paying for video — ~40%→80% first-try. Opt out via ref_lock:false.
+    let refFrame = s.continuity_refs?.[0];
+    const lock = s.visual.ref_lock ?? manifest.brand?.ref_lock ?? true;
+    if (!refFrame && lock) {
+      const iprov =
+        s.provider_assignments?.image || reg.capabilities.image.default;
+      const ir = JSON.parse(
+        execFileSync("node", [adapterPath("image", iprov)], {
+          input: JSON.stringify({
+            brief,
+            aspect,
+            out_path: join(projDir, "frames", `${s.id}.png`),
+          }),
+          encoding: "utf8",
+        }),
+      );
+      refFrame = ir.image_path;
+      process.stderr.write(`  ${s.id}: ref-frame via ${iprov}\n`);
+    }
+
     const prov = s.provider_assignments?.clip || reg.capabilities.clip.default;
     const r = JSON.parse(
       execFileSync("node", [adapterPath("clip", prov)], {
         input: JSON.stringify({
-          brief: s.visual.visual_brief || s.title || s.tts_script,
-          aspect: manifest.format?.[0] || "16:9",
+          brief,
+          aspect,
           duration_s: s.duration_ms ? Math.round(s.duration_ms / 1000) : 6,
-          ref_frame: s.continuity_refs?.[0],
+          ref_frame: refFrame,
           out_path: join(projDir, "clips", `${s.id}.mp4`),
         }),
         encoding: "utf8",
@@ -76,7 +100,9 @@ for (let i = 0; i < scenes.length; i++) {
     );
     s.visual.asset = `clips/${s.id}.mp4`;
     if (!s.duration_ms) s.duration_ms = r.duration_ms;
-    process.stderr.write(`  ${s.id}: clip via ${prov} · ${r.duration_ms}ms\n`);
+    process.stderr.write(
+      `  ${s.id}: clip via ${prov}${refFrame ? " (i2v from ref)" : ""} · ${r.duration_ms}ms\n`,
+    );
   }
 }
 
