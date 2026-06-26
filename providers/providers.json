@@ -19,8 +19,14 @@
       }
     },
     "stt": {
-      "default": "whisperx",
+      "default": "openai-whisper",
       "adapters": {
+        "openai-whisper": {
+          "path": "providers/stt/openai-whisper.mjs",
+          "tier": "plugin",
+          "needs": ["OPENAI_API_KEY (or config image.openai_api_key)"],
+          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS)."
+        },
         "deepgram": {
           "path": "providers/stt/deepgram.mjs",
           "tier": "plugin",

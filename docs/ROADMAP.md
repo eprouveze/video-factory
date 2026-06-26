@@ -26,7 +26,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
 - ✅ `image` adapter (Imagen + gpt-image-2, **direct keys** — no fal markup) + reference-frame locking
 - ✅ `clip` adapters — Veo 3.1 fast (direct, Gemini API) ✅; Kling (direct, single-key) ✅ *(needs account credits to produce)*
 - ✅ `music` + `sfx` adapters (ElevenLabs) + music-bed **ducking** in the compositor
-- 🔭 `stt` adapter (Deepgram / WhisperX) for captions when TTS lacks timings — deferred
+- ✅ `stt` adapter — OpenAI Whisper (`whisper-1`, **word-level timestamps**) for caption recovery
+- ✅ **Real-voice voiceover** — scene `voiceover:` uses a speaker's ACTUAL voice (not TTS);
+  `scripts/extract-voice.mjs` forced-aligns named quotes out of a recording (Whisper word
+  timestamps) → normalized clip + `word_timings`. Blends with TTS narration. *(Munich GAM recap)*
+- ✅ **Ken-Burns on stills** — `image` scenes move by `shot.motion`; `objectPosition` biases the
+  crop for off-centre subjects in 9:16; `fit:"contain"` for poster/cover art
 - 🟡 Editor agent defined; auto-regenerate-on-fail loop not yet wired into production
 
 ## Phase 0.3 — Avatar + reframe

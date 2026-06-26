@@ -87,7 +87,11 @@
         "title": { "type": "string" },
         "tts_script": {
           "type": "string",
-          "description": "EXACT narration. Source of truth for TIMING — scene duration is derived from real audio length, never estimated."
+          "description": "EXACT narration. Source of truth for TIMING — scene duration is derived from real audio length, never estimated. Also the on-screen text and caption source. When `voiceover` is set, keep tts_script verbatim-equal to the spoken clip so captions and on-screen copy match."
+        },
+        "voiceover": {
+          "type": "string",
+          "description": "Path to a SUPPLIED real-voice audio clip to use as this scene's narration instead of TTS — e.g. a speaker's actual voice pulled from a recording via `scripts/extract-voice.mjs`. The producer uses it as the scene audio, measures its real duration, and recovers caption word-timings via STT. Use for apex quotes where authentic delivery beats TTS."
         },
         "duration_estimate_s": {
           "type": "number",
@@ -109,6 +113,15 @@
             "asset": {
               "type": "string",
               "description": "Path to the produced/supplied asset (filled by the pipeline)."
+            },
+            "fit": {
+              "enum": ["cover", "contain"],
+              "default": "cover",
+              "description": "For source=image: object-fit. 'cover' crops to fill (default for photos); 'contain' shows the whole asset on the brand background (use for portrait/poster art like a magazine cover so nothing is cropped)."
+            },
+            "objectPosition": {
+              "type": "string",
+              "description": "For source=image: CSS object-position (e.g. '68% 42%'). Biases the Ken-Burns crop so an off-centre subject survives a tighter aspect (e.g. keep a right-of-centre speaker in the 9:16 cut)."
             },
             "component": {
               "type": "string",
