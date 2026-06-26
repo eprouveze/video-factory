@@ -35,6 +35,53 @@ const scenes = manifest.scenes || [];
 for (let i = 0; i < scenes.length; i++) {
   const s = scenes[i];
 
+  // real-voice voiceover — a scene can supply a pre-recorded clip (e.g. the speaker's ACTUAL
+  // voice pulled from a recording via scripts/extract-voice.mjs) instead of TTS. Use it as the
+  // scene audio, measure its real duration, and recover caption word-timings via STT if absent.
+  if (s.voiceover && !s._audio) {
+    const vp = join(projDir, s.voiceover);
+    s._audio = s.voiceover;
+    s.duration_ms = Math.round(
+      parseFloat(
+        execFileSync("ffprobe", [
+          "-v",
+          "error",
+          "-show_entries",
+          "format=duration",
+          "-of",
+          "csv=p=0",
+          vp,
+        ]).toString(),
+      ) * 1000,
+    );
+    if (!s.word_timings && s.captions !== "none") {
+      try {
+        const r = JSON.parse(
+          execFileSync(
+            "node",
+            [adapterPath("stt", reg.capabilities.stt.default)],
+            {
+              input: JSON.stringify({ audio_path: vp }),
+              encoding: "utf8",
+            },
+          ),
+        );
+        s.word_timings = (r.words || []).map((w) => ({
+          word: w.word.trim(),
+          start_ms: Math.round(w.start * 1000),
+          end_ms: Math.round(w.end * 1000),
+        }));
+      } catch (e) {
+        process.stderr.write(
+          `  ${s.id}: voiceover stt skipped: ${String(e).slice(0, 80)}\n`,
+        );
+      }
+    }
+    process.stderr.write(
+      `  ${s.id}: voiceover ${s.duration_ms}ms (real voice)${s.word_timings ? ` · ${s.word_timings.length} words` : ""}\n`,
+    );
+  }
+
   // narration — skip silent / clip-only scenes (idempotent: skip if already produced)
   if (s.tts_script && s.tts_script.trim() && !s._audio) {
     const r = tts({

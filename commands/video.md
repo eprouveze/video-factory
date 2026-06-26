@@ -27,6 +27,14 @@ gate come BEFORE any expensive generation call.**
 Run the **producer** agent. Per scene, in this order:
 4. **TTS first** (the temporal spine): `tts` adapter → audio + `word_timings`. Measure with
    `ffprobe`; write real `duration_ms` back into the manifest. Gate: silence + speaking-rate.
+   - **Real voice over TTS** — a scene may set `voiceover: <path>` to use a speaker's ACTUAL
+     voice instead of TTS (e.g. apex quotes pulled from a recording). Get the clips with
+     `scripts/extract-voice.mjs <project> '<quote>' …` (forced-aligns via `stt` word timestamps,
+     emits a normalized clip + `word_timings`). The producer measures duration and recovers
+     captions automatically. Blends cleanly with TTS narration on the connective lines.
+   - **Stills get motion** — `image` scenes Ken-Burns by `visual.shot.motion` (push/pan/handheld);
+     `visual.objectPosition` biases the crop so an off-centre subject survives the 9:16 cut,
+     and `visual.fit:"contain"` shows poster/cover art whole on the brand field.
 5. **Reference-frame lock** (if `visual.source` is `clip`): `image` adapter → a still that
    fixes composition/look, passed as `ref_frame` to the clip step. (40%→80%+ first-try.)
 6. **Visual**: `clip` / `image` / `avatar` adapter per `visual.source`, seeded by the brief
