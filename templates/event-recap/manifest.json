@@ -1,0 +1,121 @@
+{
+  "$comment": "EVENT-RECAP template — recap a real talk / session / launch as a cinematic reel. METHOD (this is the creative part, not just the structure): (1) GROUND IN SOURCE — ingest the real transcript, slide deck (pdftoppm → assets/slides/), recording, and photos before authoring; never paraphrase numbers, dates, or names, and never guess from a photo when a transcript exists. (2) VERBATIM GOLD QUOTES carry the payoff — pull the highest-impact lines exactly; put them on code cards (generators garble text). (3) REAL VOICE on the apex quotes — if you have the recording, `scripts/extract-voice.mjs <project> '<quote>'` forced-aligns the speaker's actual voice; set scene `voiceover:` (beats TTS, blends with a TTS narrator on connective lines). (4) CREDIT/ETHOS ACCURACY — reflect the speaker's framing; if they credit the team, the recap credits the team (do not claim individual credit they disown). (5) PHOTOS — cull underexposed shots, colour-correct, and set visual.objectPosition to keep an off-centre subject in the 9:16 crop; stills get Ken-Burns via shot.motion. (6) ABSTRACT b-roll only — textless, on-brand, motivated (tension/time/redirect), never generic stock. Replace every REPLACE-ME and delete scenes you don't need.",
+  "version": "1",
+  "title": "REPLACE-ME",
+  "intent": "REPLACE-ME — who this is for and what it must achieve. Name the real event + the one idea.",
+  "format": ["16:9", "9:16"],
+  "fps": 30,
+  "brand": {
+    "palette": ["#0176D3", "#032D60", "#FFFFFF", "#BAE3FF"],
+    "font": "Inter",
+    "music_style": "restrained corporate-cinematic build, 70-90 BPM, no drop, ducked under voice",
+    "tone": "confident, earned, field-credible — a story with a takeaway, not a brag. Credit the team, not the self."
+  },
+  "hook": {
+    "type": "bold_claim",
+    "text": "REPLACE-ME — the single most arresting fact/number. Lands MUTED. Never a logo."
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "title": "Hook — the number",
+      "tts_script": "REPLACE-ME — say the stakes out loud; the number lives on the card.",
+      "duration_estimate_s": 3,
+      "visual": {
+        "source": "code",
+        "component": "StatCard",
+        "props": { "value": "REPLACE", "label": "REPLACE" }
+      },
+      "captions": "none"
+    },
+    {
+      "id": "s2",
+      "title": "B-roll — tension (abstract)",
+      "tts_script": "REPLACE-ME — the stakes / the jeopardy, in one line.",
+      "duration_estimate_s": 4,
+      "visual": {
+        "source": "clip",
+        "visual_brief": "REPLACE-ME — ABSTRACT, textless, no faces; motivated by the tension (e.g. a thread about to snap). On-brand palette.",
+        "shot": { "size": "close", "angle": "eye", "motion": "push" }
+      },
+      "provider_assignments": { "clip": "veo" },
+      "captions": "auto"
+    },
+    {
+      "id": "s3",
+      "title": "Protagonist on stage (real photo)",
+      "tts_script": "REPLACE-ME — name the speaker + event; CREDIT THE TEAM, third person.",
+      "duration_estimate_s": 5,
+      "visual": {
+        "source": "image",
+        "asset": "assets/REPLACE-photo.jpg",
+        "visual_brief": "REPLACE-ME — real, colour-corrected stage photo; Ken-Burns push. Add a small lower-third with name + role.",
+        "shot": { "size": "wide", "angle": "eye", "motion": "push" },
+        "objectPosition": "50% 42%"
+      },
+      "captions": "auto"
+    },
+    {
+      "id": "s4",
+      "title": "Pattern interrupt — the timeline",
+      "tts_script": "REPLACE-ME — the turn that nearly went wrong.",
+      "duration_estimate_s": 3,
+      "visual": {
+        "source": "code",
+        "component": "TitleCard",
+        "props": {
+          "title": "REPLACE — EYEBROW",
+          "text": "REPLACE — exact dates/beats"
+        }
+      },
+      "captions": "auto",
+      "sfx": ["impact hit on cut-in to card"]
+    },
+    {
+      "id": "s5",
+      "title": "Apex quote — REAL VOICE",
+      "tts_script": "REPLACE-ME — the verbatim quote, exactly as spoken (used for captions + on-screen text).",
+      "voiceover": "audio/voice-REPLACE.mp3",
+      "duration_estimate_s": 4,
+      "visual": {
+        "source": "code",
+        "component": "TitleCard",
+        "props": {
+          "title": "REPLACE — ATTRIBUTION",
+          "text": "REPLACE — the verbatim quote"
+        }
+      },
+      "captions": "auto"
+    },
+    {
+      "id": "s6",
+      "title": "The framework (screenshot card)",
+      "tts_script": "REPLACE-ME — name the takeaway framework; credit the team's 95%.",
+      "duration_estimate_s": 5,
+      "visual": {
+        "source": "code",
+        "component": "TitleCard",
+        "props": {
+          "title": "REPLACE — FRAMEWORK",
+          "text": "REPLACE · the moves · one line"
+        }
+      },
+      "captions": "auto"
+    },
+    {
+      "id": "s7",
+      "title": "Hero close — cover / poster",
+      "tts_script": "REPLACE-ME — the outcome, in three words.",
+      "duration_estimate_s": 3,
+      "visual": {
+        "source": "image",
+        "asset": "assets/REPLACE-cover.png",
+        "visual_brief": "REPLACE-ME — the polished cover/poster as the prestige close; slow push, music swells and fades.",
+        "shot": { "size": "close", "angle": "eye", "motion": "push" },
+        "fit": "contain"
+      },
+      "captions": "none",
+      "sfx": ["low boom on cover hold"]
+    }
+  ]
+}

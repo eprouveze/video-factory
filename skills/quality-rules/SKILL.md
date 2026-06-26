@@ -66,6 +66,30 @@ before the manifest is locked. If `/deslop` isn't installed, apply this BLOCK-le
 Spoken copy especially: write for the ear, not the textbook. (Full skill + the other 16
 patterns: `/deslop`, MIT — github.com/eprouveze/claude-skills.)
 
+## 9. Recaps of real events — ground truth beats invention
+
+When the video recaps something that actually happened (a talk, launch, customer story), the
+quality bar is *fidelity*, not just craft. The `event-recap` template encodes this.
+
+- **Ground in source, don't guess.** Ingest the real **transcript, slide deck, recording, and
+  photos** before authoring. Numbers, dates, names, and framework labels are quoted exactly —
+  never paraphrased, never inferred from a photo when a transcript exists. (Reading the deck +
+  transcript changed the Munich recap materially vs. the photo-only first pass.)
+- **Verbatim gold quotes carry the payoff.** Pull the highest-impact lines *exactly* and put them
+  on **code cards** — the generators garble text, so every real quote/number/date lives in a card,
+  never in a generated frame.
+- **Real voice on the apex lines.** If you have the recording, use the speaker's ACTUAL voice on
+  the gold quotes (`scripts/extract-voice.mjs` → scene `voiceover:`). It blends with a TTS narrator
+  on the connective lines and beats any clone for authenticity. Keep `tts_script` verbatim-equal so
+  captions match.
+- **Credit & ethos accuracy.** Reflect the speaker's own framing. If they credit the team, the
+  recap credits the team — never assign individual credit they explicitly disown. Getting this
+  wrong is worse than any visual flaw.
+- **Real assets first.** Use the actual photos (cull underexposed shots, colour-correct, set
+  `objectPosition` so an off-centre subject survives 9:16) and the real slides (`pdftoppm` →
+  `assets/slides/`) before reaching for generation. Generative b-roll here is **abstract, textless,
+  motivated** texture only — never a stand-in for what really happened.
+
 ## The divide (what the Editor scores against)
 | Slop | Incredible |
 |---|---|

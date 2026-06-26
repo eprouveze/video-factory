@@ -32,6 +32,9 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
   timestamps) → normalized clip + `word_timings`. Blends with TTS narration. *(Munich GAM recap)*
 - ✅ **Ken-Burns on stills** — `image` scenes move by `shot.motion`; `objectPosition` biases the
   crop for off-centre subjects in 9:16; `fit:"contain"` for poster/cover art
+- ✅ **`event-recap` template + editorial method** (quality-rules §9): ground in the real
+  transcript/deck/recording, verbatim gold quotes on cards, real-voice apex lines, team-credit
+  fidelity, real photos+slides over generation. *(Munich GAM recap)*
 - 🟡 Editor agent defined; auto-regenerate-on-fail loop not yet wired into production
 
 ## Phase 0.3 — Avatar + reframe
