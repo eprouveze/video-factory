@@ -19,6 +19,7 @@ remotion/out/
 *.mp3
 *.png
 examples/out/
+projects/
 
 # Node
 node_modules/

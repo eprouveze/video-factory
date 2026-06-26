@@ -43,7 +43,9 @@ repo**.
    - Deepgram: `GET https://api.deepgram.com/v1/projects`
    Report ✅/❌ per provider with the failure reason if any.
 
-5. **Set defaults.** For each working tier, set the `default` adapter in `providers.json`
+5. **Set defaults.** For ElevenLabs, also record a **default voice id** into
+   `.video-factory/config.json` (`tts.default_voice`) so the producer has a voice without
+   per-scene config. For each working tier, set the `default` adapter in `providers.json`
    (e.g. tts→elevenlabs). Leave declined tiers on their core/`null` adapter.
 
 6. **Summarize.** Print the final capability table and the one command to try next:

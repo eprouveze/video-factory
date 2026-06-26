@@ -12,13 +12,13 @@
   },
   "hook": {
     "type": "bold_claim",
-    "text": "Most AI video looks like slop. Here's the fix."
+    "text": "Most AI video is slop. Watch what good looks like."
   },
   "scenes": [
     {
       "id": "s1",
       "title": "Hook",
-      "tts_script": "Most AI video looks like slop — flat, generic, forgettable.",
+      "tts_script": "Most AI video is generic. You forget it before the next scroll.",
       "duration_estimate_s": 3,
       "visual": { "source": "code", "component": "TitleCard" }
     },
@@ -36,14 +36,14 @@
     {
       "id": "s3",
       "title": "The fix",
-      "tts_script": "Video Factory writes a reviewable plan first, then assembles every layer on purpose.",
+      "tts_script": "Video Factory writes a reviewable plan first, then assembles every layer deliberately.",
       "duration_estimate_s": 5,
       "visual": { "source": "code", "component": "TitleCard" }
     },
     {
       "id": "s4",
       "title": "Close",
-      "tts_script": "Incredible video, on purpose — not by accident.",
+      "tts_script": "Video this good, made on purpose.",
       "duration_estimate_s": 3,
       "visual": { "source": "code", "component": "TitleCard" }
     }
