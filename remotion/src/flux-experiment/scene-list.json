@@ -1,0 +1,262 @@
+{
+  "fontFamily": "Space Grotesk",
+  "fps": 60,
+  "scenes": [
+    {
+      "callouts": [
+        {
+          "content": {
+            "primary": "Continuous Delivery",
+            "secondary": "Unlocked by decoupling build from release.",
+            "type": "text"
+          },
+          "id": "c-ship",
+          "targetId": "ship"
+        }
+      ],
+      "connectors": [
+        {
+          "arrowHead": "triangle",
+          "from": "plan",
+          "id": "conn-1",
+          "style": "arrow",
+          "to": "build"
+        },
+        {
+          "arrowHead": "triangle",
+          "from": "build",
+          "id": "conn-2",
+          "style": "arrow",
+          "to": "ship"
+        }
+      ],
+      "duration": 150,
+      "id": "the-engine",
+      "layoutMode": "structured",
+      "props": {
+        "edges": [
+          {
+            "from": "plan",
+            "to": "build"
+          },
+          {
+            "from": "build",
+            "to": "ship"
+          }
+        ],
+        "header": {
+          "subtitle": "A ruthless 3-step pipeline",
+          "title": "The Execution Engine"
+        },
+        "nodes": [
+          {
+            "id": "plan",
+            "label": "Plan"
+          },
+          {
+            "id": "build",
+            "label": "Build"
+          },
+          {
+            "id": "ship",
+            "label": "Ship"
+          }
+        ]
+      },
+      "template": "FlowchartRenderer",
+      "transitionIn": "slide-up"
+    },
+    {
+      "duration": 180,
+      "id": "chaos-vs-clarity",
+      "layoutMode": "template",
+      "props": {
+        "divider": {
+          "color": "#00E5FF",
+          "width": 4
+        },
+        "header": {
+          "subtitle": "Complexity was destroying velocity",
+          "title": "Why we killed the old process"
+        },
+        "left": {
+          "content": {
+            "items": [
+              {
+                "label": "Cycle Time",
+                "value": "14 Days"
+              },
+              {
+                "label": "Rollbacks",
+                "value": "22%"
+              }
+            ],
+            "type": "stats"
+          },
+          "id": "before",
+          "label": "Ad-hoc Chaos"
+        },
+        "right": {
+          "content": {
+            "items": [
+              {
+                "label": "Cycle Time",
+                "value": "48 Hours"
+              },
+              {
+                "label": "Rollbacks",
+                "value": "< 1%"
+              }
+            ],
+            "type": "stats"
+          },
+          "id": "after",
+          "label": "3-Step Engine"
+        }
+      },
+      "sizeVariant": "auto",
+      "template": "BeforeAfterSplit",
+      "transitionIn": "slide-left"
+    },
+    {
+      "callouts": [
+        {
+          "content": {
+            "primary": "The Compounding Effect",
+            "secondary": "Faster ships = tighter feedback loops.",
+            "type": "text"
+          },
+          "id": "c-vel",
+          "targetId": "kpi-vel"
+        }
+      ],
+      "duration": 200,
+      "id": "velocity-metrics",
+      "layoutMode": "template",
+      "props": {
+        "chart": {
+          "data": {
+            "series": [
+              {
+                "id": "deploys",
+                "name": "Deployments",
+                "values": [
+                  120,
+                  250,
+                  480,
+                  1204
+                ]
+              }
+            ],
+            "type": "series",
+            "xLabels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ]
+          },
+          "type": "bar"
+        },
+        "header": {
+          "subtitle": "What happens when you simplify",
+          "title": "Impact at Scale"
+        },
+        "kpis": [
+          {
+            "id": "kpi-vel",
+            "label": "Velocity Increase",
+            "trend": {
+              "direction": "up",
+              "value": "YoY"
+            },
+            "value": "+342%"
+          },
+          {
+            "id": "kpi-time",
+            "label": "Time to Market",
+            "trend": {
+              "direction": "down",
+              "value": "from 14d"
+            },
+            "value": "2.1d"
+          },
+          {
+            "id": "kpi-rev",
+            "label": "Revenue Impact",
+            "trend": {
+              "direction": "up",
+              "value": "attributed to speed"
+            },
+            "value": "$4.2M"
+          }
+        ]
+      },
+      "sizeVariant": "3-up",
+      "template": "DashboardGrid",
+      "transitionIn": "slide-up"
+    },
+    {
+      "connectors": [
+        {
+          "from": "m-plan",
+          "id": "c-pb",
+          "strokeStyle": "dashed",
+          "style": "line",
+          "to": "m-build"
+        },
+        {
+          "from": "m-build",
+          "id": "c-bs",
+          "strokeStyle": "dashed",
+          "style": "line",
+          "to": "m-ship"
+        }
+      ],
+      "duration": 180,
+      "id": "real-world-timeline",
+      "layoutMode": "template",
+      "props": {
+        "header": {
+          "subtitle": "A real feature lifecycle",
+          "title": "Concept to Customer"
+        },
+        "milestones": [
+          {
+            "date": "09:00 AM",
+            "id": "m-plan",
+            "title": "Plan: PRD & Architecture locked"
+          },
+          {
+            "date": "14:00 PM",
+            "id": "m-build",
+            "title": "Build: Core logic & tests written"
+          },
+          {
+            "date": "Day 2 - 11:00 AM",
+            "id": "m-ship",
+            "title": "Ship: Deployed to 100% of production"
+          }
+        ],
+        "showAxisLine": true
+      },
+      "sizeVariant": "auto",
+      "template": "TimelineMilestones",
+      "transitionIn": "wipe"
+    }
+  ],
+  "theme": {
+    "accent": "#00E5FF",
+    "bg": "#0A0A0A",
+    "card": "#262626",
+    "chart": [
+      "#00E5FF",
+      "#7C3AED",
+      "#EC4899"
+    ],
+    "surface": "#171717",
+    "text": "#FFFFFF",
+    "textMuted": "#A3A3A3"
+  },
+  "tier": "premium"
+}
