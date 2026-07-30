@@ -12,6 +12,14 @@ For each scene:
 - **`tts_script`** — the exact words spoken. This is the source of truth for timing, so write
   for the ear: short clauses, natural breath points, one idea per sentence. Match the brand
   `tone`. No filler, no "in this video". Write the way a confident human host actually talks.
+  Structure pauses at thought boundaries, not just sentence boundaries: land a short clause,
+  then leave a beat before the next idea. Use periods and ellipses (`…`) deliberately; a
+  period after a landed idea creates a longer breath than a comma, while an ellipsis before a
+  reveal or punchline holds the beat. Never use an em dash. Pace adaptively: isolate a stat or
+  punchline in its own short sentence with a pause on either side, but let connective or
+  explanatory clauses run longer. Match the voice's breath rhythm to the cut rhythm in
+  `skills/quality-rules` §2. Flat, unbroken TTS delivery is one of the clearest robotic AI
+  voice tells, even when the words are strong.
 - **`visual_brief`** — SEMANTIC art direction, never a keyword. The test: would a keyword
   search return this? If "brain" → rewrite as "neurons firing across a dark synaptic gap,
   shallow depth of field, cool palette". Name subject, composition, light, motion, mood.
