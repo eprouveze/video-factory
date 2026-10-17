@@ -30,21 +30,60 @@ const useP = () => {
     });
 };
 
-const Ambient: React.FC = () => (
-  <AbsoluteFill
-    style={{
-      background:
-        `radial-gradient(1000px 700px at 30% 15%, ${INDIGO}14, transparent 70%),` +
-        `radial-gradient(900px 700px at 75% 90%, ${INDIGO}0d, transparent 70%)`,
-    }}
-  />
-);
+const Ambient: React.FC<{ variant?: string }> = ({ variant }) => {
+  if (variant === "blueprint") {
+    return (
+      <AbsoluteFill
+        style={{
+          background:
+            `radial-gradient(1100px 800px at 50% 30%, ${INDIGO}18, transparent 75%),` +
+            `radial-gradient(circle, ${INDIGO}18 1.5px, transparent 1.5px)`,
+          backgroundSize: "100% 100%, 36px 36px",
+        }}
+      />
+    );
+  }
+  if (variant === "cta") {
+    return (
+      <AbsoluteFill
+        style={{
+          background:
+            `radial-gradient(900px 700px at 50% 50%, ${INDIGO}28, transparent 70%),` +
+            `radial-gradient(800px 600px at 20% 80%, ${INDIGO_LIGHT}12, transparent 65%)`,
+        }}
+      />
+    );
+  }
+  if (variant === "problem") {
+    return (
+      <AbsoluteFill
+        style={{
+          background:
+            `linear-gradient(90deg, #0b0f1a 0%, #0d1222 48%, #141a30 52%, #111628 100%),` +
+            `radial-gradient(800px 600px at 75% 50%, ${INDIGO}1a, transparent 70%)`,
+        }}
+      />
+    );
+  }
+  return (
+    <AbsoluteFill
+      style={{
+        background:
+          `radial-gradient(1000px 700px at 30% 15%, ${INDIGO}14, transparent 70%),` +
+          `radial-gradient(900px 700px at 75% 90%, ${INDIGO}0d, transparent 70%)`,
+      }}
+    />
+  );
+};
 
-const Frame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const Frame: React.FC<{ children: React.ReactNode; variant?: string }> = ({
+  children,
+  variant,
+}) => (
   <AbsoluteFill
     style={{ backgroundColor: BG, fontFamily: "Inter, system-ui, sans-serif" }}
   >
-    <Ambient />
+    <Ambient variant={variant} />
     {children}
   </AbsoluteFill>
 );
@@ -177,7 +216,7 @@ export const FluxProblem: React.FC<any> = () => {
   const pulse = 0.5 + 0.5 * Math.sin((frame / fps) * Math.PI * 1.6);
 
   return (
-    <Frame>
+    <Frame variant="problem">
       {/* headline */}
       <div
         style={{
@@ -364,8 +403,20 @@ export const FluxHowItWorks: React.FC<any> = () => {
     durationInFrames: 24,
   });
 
+  const cameraScale = interpolate(frame, [0, 381], [1.0, 1.04], {
+    extrapolateRight: "clamp",
+  });
+
   return (
-    <Frame>
+    <Frame variant="blueprint">
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          transform: `scale(${cameraScale})`,
+          transformOrigin: "50% 45%",
+        }}
+      >
       {/* step rail */}
       <div
         style={{
@@ -449,6 +500,10 @@ export const FluxHowItWorks: React.FC<any> = () => {
           config: { damping: 12, mass: 0.6 },
           durationInFrames: 30,
         });
+        const activePulse =
+          frame > 160
+            ? 0.35 + 0.45 * Math.sin(((frame + i * 20) / fps) * Math.PI * 2.2)
+            : 0.35;
         return (
           <MiniNode
             key={n.label}
@@ -457,9 +512,9 @@ export const FluxHowItWorks: React.FC<any> = () => {
             w={NW}
             label={n.label}
             color="#171d33"
-            border={INDIGO}
+            border={activePulse > 0.55 ? INDIGO_LIGHT : INDIGO}
             scale={s}
-            glow={0.35}
+            glow={activePulse}
             fontSize={28}
           />
         );
@@ -518,6 +573,49 @@ export const FluxHowItWorks: React.FC<any> = () => {
             </g>
           );
         })()}
+
+        {/* Continuous ambient flow packets once diagram is assembled */}
+        {frame > 160 &&
+          [0, 1].map((i) => {
+            const sx = x0 + NW + i * (NW + GAP);
+            const ex = sx + GAP;
+            const y = nodeY + 38;
+            const packetT = ((frame + i * 20) % 36) / 36;
+            const px = sx + 10 + (ex - sx - 26) * packetT;
+            return (
+              <circle
+                key={`flow-packet-${i}`}
+                cx={px}
+                cy={y}
+                r={5.5}
+                fill="#c7d2fe"
+              />
+            );
+          })}
+        {frame > 190 &&
+          (() => {
+            const fromX = x0 + NW + GAP + NW / 2;
+            const toX = x0 + NW / 2;
+            const yTop = nodeY + 38;
+            const tLoop = ((frame - 190) % 48) / 48;
+            const midX = (fromX + toX) / 2;
+            const bx =
+              fromX * Math.pow(1 - tLoop, 2) +
+              2 * midX * (1 - tLoop) * tLoop +
+              toX * Math.pow(tLoop, 2);
+            const by =
+              (yTop + 58) * (1 - tLoop) +
+              (yTop + 140) * Math.sin(tLoop * Math.PI) +
+              (yTop + 62) * tLoop;
+            return (
+              <circle
+                cx={bx}
+                cy={by}
+                r={5}
+                fill={INDIGO_LIGHT}
+              />
+            );
+          })()}
       </svg>
 
       {/* export chips */}
@@ -530,7 +628,7 @@ export const FluxHowItWorks: React.FC<any> = () => {
           justifyContent: "center",
           gap: 22,
           opacity: chipsIn,
-          transform: `translateY(${(1 - chipsIn) * 26}px)`,
+          transform: `translateY(${(1 - chipsIn) * 26 + (frame > 225 ? Math.sin((frame / fps) * 2.5) * 5 : 0)}px)`,
         }}
       >
         {["▶ Preview", "GIF", "MP4", "WebM"].map((c, i) => (
@@ -549,6 +647,7 @@ export const FluxHowItWorks: React.FC<any> = () => {
             {c}
           </div>
         ))}
+      </div>
       </div>
     </Frame>
   );
@@ -821,15 +920,19 @@ export const FluxCTA: React.FC<any> = () => {
     durationInFrames: 26,
   });
 
+  const glowPulse = 0.5 + 0.5 * Math.sin(((frame - 55) / fps) * Math.PI * 1.5);
+  const floatY = Math.sin((frame / fps) * 2.0) * 4;
+  const logoFloat = Math.sin((frame / fps) * 1.2) * 3;
+
   return (
-    <Frame>
+    <Frame variant="cta">
       <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 30,
-            transform: `scale(${markIn})`,
+            transform: `scale(${markIn}) translateY(${frame > 35 ? logoFloat : 0}px)`,
             opacity: markIn,
           }}
         >
@@ -876,8 +979,8 @@ export const FluxCTA: React.FC<any> = () => {
             fontSize: width * 0.024,
             fontWeight: 700,
             opacity: pillIn,
-            transform: `translateY(${(1 - pillIn) * 28}px)`,
-            boxShadow: `0 0 60px ${INDIGO}55`,
+            transform: `translateY(${(1 - pillIn) * 28 + (frame > 75 ? floatY : 0)}px)`,
+            boxShadow: `0 0 ${45 + 35 * glowPulse}px ${INDIGO}77`,
           }}
         >
           fluxdiagram.app

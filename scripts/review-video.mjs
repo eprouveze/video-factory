@@ -133,7 +133,7 @@ try {
     [
       "-nostats",
       "-i", videoPath,
-      "-vf", "freezedetect=n=-50dB:d=2.5,scdet=t=12",
+      "-vf", "freezedetect=n=-50dB:d=2.5,select='gt(scene\\,0.08)',showinfo",
       "-f", "null",
       "-",
     ],
@@ -162,9 +162,9 @@ try {
     motionScore = Math.max(3.0, motionScore - freezeStarts.length * 1.5);
   }
 
-  const sceneCuts = (freezeLog.match(/lavfi\.scdet\.time:/g) || []).length;
-  const expectedMinCuts = Math.max(1, Math.floor(durationS / 12));
-  if (durationS >= 12 && sceneCuts < expectedMinCuts) {
+  const sceneCuts = (freezeLog.match(/Parsed_showinfo.*pts_time:/g) || []).length;
+  const expectedMinCuts = Math.max(1, Math.floor(durationS / 14));
+  if (durationS >= 14 && sceneCuts < expectedMinCuts) {
     issues.push({
       timestamp: "00:00",
       category: "variety",
