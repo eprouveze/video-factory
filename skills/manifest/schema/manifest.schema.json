@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/eprouveze/video-factory/manifest.schema.json",
+  "$id": "https://sceneverso.com/schemas/manifest.v1.schema.json",
   "title": "Video Factory Manifest",
   "description": "Declarative, human-reviewable source of truth for one video. The Director/Screenwriter agents SERIALIZE their creative work into this; it is reviewed by a human BEFORE any expensive generation call; then the Producer/Editor agents consume and UPDATE it in place as assets are produced. If output is wrong, fix the manifest, not the code.",
   "type": "object",
@@ -23,6 +23,15 @@
       "minItems": 1
     },
     "fps": { "type": "integer", "default": 30, "minimum": 24, "maximum": 60 },
+    "compositor": {
+      "enum": ["remotion", "hyperframes"],
+      "default": "remotion",
+      "description": "Compositor engine to render the manifest."
+    },
+    "music": {
+      "type": "string",
+      "description": "Global background music asset path."
+    },
     "brand": {
       "type": "object",
       "description": "Visual + sonic identity carried across every scene. Locks consistency (drift is the #1 slop signal).",
@@ -45,6 +54,10 @@
         "tone": {
           "type": "string",
           "description": "e.g. 'calm authoritative', 'high-energy'. Drives TTS delivery + pacing."
+        },
+        "ref_lock": {
+          "type": "boolean",
+          "description": "Default ref_lock behavior across all scenes."
         }
       }
     },
@@ -101,6 +114,32 @@
           "type": "number",
           "description": "Planning estimate only; replaced by measured audio duration after TTS."
         },
+        "duration_ms": {
+          "type": "integer",
+          "description": "Measured scene duration in milliseconds from real audio/media."
+        },
+        "_audio": {
+          "type": "string",
+          "description": "Path to generated/extracted scene narration audio."
+        },
+        "_sfx": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Paths to generated scene sound effects."
+        },
+        "word_timings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["word", "start_ms", "end_ms"],
+            "properties": {
+              "word": { "type": "string" },
+              "start_ms": { "type": "number" },
+              "end_ms": { "type": "number" }
+            }
+          },
+          "description": "Word-level timestamp alignments for captions."
+        },
         "visual": {
           "type": "object",
           "required": ["source"],
@@ -117,6 +156,14 @@
             "asset": {
               "type": "string",
               "description": "Path to the produced/supplied asset (filled by the pipeline)."
+            },
+            "ref_lock": {
+              "type": "boolean",
+              "description": "Whether to lock generative video with an image still frame."
+            },
+            "overlay": {
+              "type": "string",
+              "description": "Optional overlay asset or badge."
             },
             "fit": {
               "enum": ["cover", "contain"],

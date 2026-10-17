@@ -8,6 +8,25 @@ import { resolve, join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+function alignDisplayWords(displayScript, phoneticTimings) {
+  const displayWords = (displayScript || "").trim().split(/\s+/).filter(Boolean);
+  if (!displayWords.length || !phoneticTimings?.length) return phoneticTimings || [];
+  if (displayWords.length === phoneticTimings.length) {
+    return phoneticTimings.map((t, idx) => ({ ...t, word: displayWords[idx] }));
+  }
+  // Proportional span projection when phonetic token count differs from display token count
+  const totalPh = phoneticTimings.length;
+  return displayWords.map((word, idx) => {
+    const startIdx = Math.min(totalPh - 1, Math.floor((idx * totalPh) / displayWords.length));
+    const endIdx = Math.min(totalPh - 1, Math.max(startIdx, Math.ceil(((idx + 1) * totalPh) / displayWords.length) - 1));
+    return {
+      word,
+      start_ms: phoneticTimings[startIdx].start_ms,
+      end_ms: phoneticTimings[endIdx].end_ms,
+    };
+  });
+}
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projDir = resolve(process.argv[2] || ".");
 const manifestPath = join(projDir, "manifest.json");
@@ -95,7 +114,9 @@ for (let i = 0; i < scenes.length; i++) {
         out_path: join(projDir, "audio", `${s.id}.mp3`),
       });
       s._audio = `audio/${s.id}.mp3`; // relative to projDir; compositor stages it into public/
-      s.word_timings = r.word_timings;
+      s.word_timings = s.tts_phonetic && s.tts_script
+        ? alignDisplayWords(s.tts_script, r.word_timings)
+        : r.word_timings;
       s.duration_ms = r.duration_ms; // TTS-first write-back
       const words = (spokenText.match(/\S+/g) || []).length;
       const wpm = words / (r.duration_ms / 60000);

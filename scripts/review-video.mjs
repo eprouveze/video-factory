@@ -10,7 +10,7 @@
 
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, join, basename } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
 if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
@@ -57,6 +57,7 @@ const probeRaw = execFileSync(
 const probe = JSON.parse(probeRaw);
 const formatInfo = probe.format || {};
 const videoStream = (probe.streams || []).find((s) => s.codec_name !== "mp3" && s.codec_name !== "aac") || {};
+const audioStream = (probe.streams || []).find((s) => s.codec_name === "mp3" || s.codec_name === "aac" || s.codec_name === "opus");
 
 const durationS = parseFloat(formatInfo.duration || "0");
 const durationMs = Math.round(durationS * 1000);
@@ -89,6 +90,32 @@ if (manifestPath && existsSync(manifestPath)) {
       });
       motionScore -= 2.0;
     }
+
+    // Audio stream presence check when narration is expected
+    const expectsAudio = scenes.some((s) => (s.tts_script || s.tts_phonetic || s.voiceover) && s._audio);
+    if (expectsAudio && !audioStream) {
+      issues.push({
+        timestamp: "00:00",
+        category: "audio",
+        severity: "error",
+        message: "Manifest contains narrated scenes but rendered MP4 has no audio stream.",
+      });
+      motionScore -= 2.0;
+    }
+
+    // Caption timing overflow check
+    for (const s of scenes) {
+      const lastWord = s.word_timings?.[s.word_timings.length - 1];
+      if (lastWord && s.duration_ms && lastWord.end_ms > s.duration_ms + 150) {
+        issues.push({
+          timestamp: "00:00",
+          category: "readability",
+          severity: "warning",
+          message: `Scene ${s.id}: caption end (${lastWord.end_ms}ms) overflows scene duration (${s.duration_ms}ms).`,
+        });
+        readabilityScore -= 1.0;
+      }
+    }
   } catch (err) {
     issues.push({
       timestamp: "00:00",
@@ -99,19 +126,20 @@ if (manifestPath && existsSync(manifestPath)) {
   }
 }
 
-// 3. Freeze Detection (>2.5s static screen)
+// 3. Freeze Detection (>2.5s static screen) & Scene Variety via stderr
 try {
-  const freezeLog = execFileSync(
+  const ffRes = spawnSync(
     "ffmpeg",
     [
       "-nostats",
       "-i", videoPath,
-      "-vf", "freezedetect=n=-50dB:d=2.5",
+      "-vf", "freezedetect=n=-50dB:d=2.5,scdet=t=12",
       "-f", "null",
       "-",
     ],
-    { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] },
+    { encoding: "utf8" },
   );
+  const freezeLog = `${ffRes.stdout || ""}\n${ffRes.stderr || ""}`;
 
   const freezeStarts = [];
   const freezeRegex = /freeze_start: ([0-9.]+)/g;
@@ -132,6 +160,18 @@ try {
       });
     });
     motionScore = Math.max(3.0, motionScore - freezeStarts.length * 1.5);
+  }
+
+  const sceneCuts = (freezeLog.match(/lavfi\.scdet\.time:/g) || []).length;
+  const expectedMinCuts = Math.max(1, Math.floor(durationS / 12));
+  if (durationS >= 12 && sceneCuts < expectedMinCuts) {
+    issues.push({
+      timestamp: "00:00",
+      category: "variety",
+      severity: "warning",
+      message: `Low visual variety: detected ${sceneCuts} visual transitions across ${durationS.toFixed(1)}s (expected >= ${expectedMinCuts}).`,
+    });
+    varietyScore = Math.max(5.0, varietyScore - 1.5);
   }
 } catch {
   // Freezedetect completed or exited cleanly
