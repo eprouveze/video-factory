@@ -27,28 +27,75 @@ function alignDisplayWords(displayScript, phoneticTimings) {
   });
 }
 
+function synthesizeWordTimings(text, duration_ms) {
+  const words = (text || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length || !duration_ms) return [];
+  const weights = words.map(w => {
+    let weight = Math.max(1, w.length);
+    if (/[,;]/.test(w)) weight += 2;
+    if (/[.!?]/.test(w)) weight += 4;
+    return weight;
+  });
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const padStart = Math.min(150, Math.floor(duration_ms * 0.05));
+  const availableDur = Math.max(100, duration_ms - padStart * 2);
+  let currentMs = padStart;
+  return words.map((word, i) => {
+    const wordDur = Math.max(120, Math.round((weights[i] / totalWeight) * availableDur));
+    const start_ms = currentMs;
+    const end_ms = Math.min(duration_ms - 20, start_ms + wordDur);
+    currentMs = end_ms + 30;
+    return { word, start_ms, end_ms };
+  });
+}
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const projDir = resolve(process.argv[2] || ".");
 const manifestPath = join(projDir, "manifest.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const tone = manifest.brand?.tone || "";
-const TTS = join(ROOT, "providers/tts/elevenlabs.mjs");
 
 mkdirSync(join(projDir, "audio"), { recursive: true });
-
-const tts = (req) =>
-  JSON.parse(
-    execFileSync("node", [TTS], {
-      input: JSON.stringify(req),
-      encoding: "utf8",
-    }),
-  );
 
 const reg = JSON.parse(
   readFileSync(join(ROOT, "providers/providers.json"), "utf8"),
 );
 const adapterPath = (cap, name) =>
   join(ROOT, reg.capabilities[cap].adapters[name].path);
+
+const tts = (req) => {
+  const prov = manifest.provider_assignments?.tts || reg.capabilities?.tts?.default || "elevenlabs";
+  const primaryAdapter = adapterPath("tts", prov);
+  try {
+    const res = JSON.parse(
+      execFileSync("node", [primaryAdapter], {
+        input: JSON.stringify(req),
+        encoding: "utf8",
+      }),
+    );
+    if (!res.word_timings || res.word_timings.length === 0) {
+      res.word_timings = synthesizeWordTimings(req.text, res.duration_ms);
+    }
+    return res;
+  } catch (err) {
+    const fallback = reg.capabilities?.tts?.fallback || "say";
+    process.stderr.write(`  TTS ${prov} failed (${String(err).slice(0, 60)}); falling back to ${fallback}...\n`);
+    const fbPath = adapterPath("tts", fallback);
+    const isSh = fbPath.endsWith(".sh");
+    const cmd = isSh ? fbPath : "node";
+    const args = isSh ? [] : [fbPath];
+    const res = JSON.parse(
+      execFileSync(cmd, args, {
+        input: JSON.stringify(req),
+        encoding: "utf8",
+      }),
+    );
+    if (!res.word_timings || res.word_timings.length === 0) {
+      res.word_timings = synthesizeWordTimings(req.text, res.duration_ms);
+    }
+    return res;
+  }
+};
 
 const scenes = manifest.scenes || [];
 for (let i = 0; i < scenes.length; i++) {
@@ -113,11 +160,15 @@ for (let i = 0; i < scenes.length; i++) {
         next_text: scenes[i + 1]?.tts_phonetic || scenes[i + 1]?.tts_script,
         out_path: join(projDir, "audio", `${s.id}.mp3`),
       });
-      s._audio = `audio/${s.id}.mp3`; // relative to projDir; compositor stages it into public/
-      s.word_timings = s.tts_phonetic && s.tts_script
+      const rawTimings = s.tts_phonetic && s.tts_script
         ? alignDisplayWords(s.tts_script, r.word_timings)
         : r.word_timings;
       s.duration_ms = r.duration_ms; // TTS-first write-back
+      s.word_timings = (rawTimings || []).map((t) => ({
+        ...t,
+        start_ms: Math.min(t.start_ms, Math.max(0, s.duration_ms - 20)),
+        end_ms: Math.min(t.end_ms, s.duration_ms),
+      }));
       const words = (spokenText.match(/\S+/g) || []).length;
       const wpm = words / (r.duration_ms / 60000);
       const [lo, hi] = s.quality_gate?.speaking_rate_wpm || [120, 180];

@@ -6,12 +6,12 @@ set -euo pipefail
 req="$(cat)"
 text="$(printf '%s' "$req" | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin)["text"])')"
 out="$(printf '%s' "$req" | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin)["out_path"])')"
-voice="$(printf '%s' "$req" | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin).get("voice","") or "")')"
+voice="$(printf '%s' "$req" | /usr/bin/python3 -c 'import sys,json;print(json.load(sys.stdin).get("voice","") or "Samantha")')"
 
 mkdir -p "$(dirname "$out")"
 aiff="${out%.*}.aiff"
 
-if [ -n "$voice" ]; then say -v "$voice" -o "$aiff" "$text"; else say -o "$aiff" "$text"; fi
+if [ -n "$voice" ]; then say -v "$voice" -o "$aiff" "$text"; else say -v "Samantha" -o "$aiff" "$text"; fi
 
 final="$aiff"
 if command -v ffmpeg >/dev/null 2>&1; then

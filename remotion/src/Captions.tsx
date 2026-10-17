@@ -4,7 +4,7 @@ import { useCurrentFrame, useVideoConfig } from "remotion";
 // Mobile-first sizing, high-contrast stroke. Reads real STT word_timings.
 export const Captions = ({ words, brand }: any) => {
   const frame = useCurrentFrame();
-  const { fps, width } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
   const ms = (frame / fps) * 1000;
 
   const activeIdx = words.findIndex(
@@ -16,7 +16,8 @@ export const Captions = ({ words, brand }: any) => {
   // Show a window of words centred on the active one.
   const start = Math.max(0, i - 3);
   const window = words.slice(start, i + 4);
-  const fontSize = Math.round(width * 0.045); // ~mobile 36-42pt equivalent
+  const isLandscape = width > height;
+  const fontSize = isLandscape ? Math.round(width * 0.02) : Math.round(width * 0.042);
   const accent = brand?.palette?.[1] ?? "#ffd24a";
   const font = brand?.font ?? "Inter, system-ui, sans-serif";
 
@@ -24,23 +25,35 @@ export const Captions = ({ words, brand }: any) => {
     <div
       style={{
         position: "absolute",
-        bottom: "12%",
-        width: "84%",
-        left: "8%",
-        textAlign: "center",
-        fontFamily: font,
-        fontWeight: 800,
-        fontSize,
-        lineHeight: 1.15,
-        color: "#fff",
-        textShadow: "0 2px 8px rgba(0,0,0,0.85)",
-        WebkitTextStroke: "2px rgba(0,0,0,0.65)",
+        bottom: isLandscape ? "3%" : "12%",
+        width: "100%",
         display: "flex",
-        flexWrap: "wrap",
-        gap: "0.35em",
         justifyContent: "center",
+        pointerEvents: "none",
+        zIndex: 50,
       }}
     >
+      <div
+        style={{
+          background: isLandscape ? "rgba(9, 13, 22, 0.85)" : "transparent",
+          backdropFilter: isLandscape ? "blur(8px)" : "none",
+          border: isLandscape ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
+          borderRadius: 999,
+          padding: isLandscape ? "8px 28px" : "0",
+          textAlign: "center",
+          fontFamily: font,
+          fontWeight: 700,
+          fontSize,
+          lineHeight: 1.2,
+          color: "#fff",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.4em",
+          justifyContent: "center",
+          maxWidth: "80%",
+          boxShadow: isLandscape ? "0 4px 20px rgba(0,0,0,0.6)" : "none",
+        }}
+      >
       {window.map((w: any, k: number) => {
         const isActive = start + k === i;
         return (
@@ -57,6 +70,7 @@ export const Captions = ({ words, brand }: any) => {
           </span>
         );
       })}
+      </div>
     </div>
   );
 };

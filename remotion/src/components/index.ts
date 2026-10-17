@@ -10,6 +10,22 @@ import {
   FluxCTA,
 } from "./FluxScenes";
 
+import {
+  SlideVersoHook,
+  SlideVersoProblem,
+  SlideVersoEngine,
+  SlideVersoShowcase,
+  SlideVersoCTA,
+} from "./SlideVersoScenes";
+
+import {
+  FluxRecreatedHook,
+  FluxRecreatedProblem,
+  FluxRecreatedEngine,
+  FluxRecreatedEmbed,
+  FluxRecreatedCTA,
+} from "./FluxRecreatedScenes";
+
 export const components: Record<string, any> = {
   TitleCard,
   StatCard,
@@ -18,4 +34,14 @@ export const components: Record<string, any> = {
   FluxHowItWorks,
   FluxShowcase,
   FluxCTA,
+  SlideVersoHook,
+  SlideVersoProblem,
+  SlideVersoEngine,
+  SlideVersoShowcase,
+  SlideVersoCTA,
+  FluxRecreatedHook,
+  FluxRecreatedProblem,
+  FluxRecreatedEngine,
+  FluxRecreatedEmbed,
+  FluxRecreatedCTA,
 };
