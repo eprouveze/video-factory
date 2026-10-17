@@ -83,27 +83,31 @@ for (let i = 0; i < scenes.length; i++) {
   }
 
   // narration — skip silent / clip-only scenes (idempotent: skip if already produced)
-  if (s.tts_script && s.tts_script.trim() && !s._audio) {
-    const r = tts({
-      text: s.tts_script,
-      tone,
-      prev_text: scenes[i - 1]?.tts_script,
-      next_text: scenes[i + 1]?.tts_script,
-      out_path: join(projDir, "audio", `${s.id}.mp3`),
-    });
-    s._audio = `audio/${s.id}.mp3`; // relative to projDir; compositor stages it into public/
-    s.word_timings = r.word_timings;
-    s.duration_ms = r.duration_ms; // TTS-first write-back
-    const words = (s.tts_script.match(/\S+/g) || []).length;
-    const wpm = words / (r.duration_ms / 60000);
-    const [lo, hi] = s.quality_gate?.speaking_rate_wpm || [120, 180];
-    const flag =
-      wpm < lo || wpm > hi
-        ? `  ⚠️ WPM ${wpm.toFixed(0)} outside [${lo},${hi}]`
-        : "";
-    process.stderr.write(
-      `  ${s.id}: tts ${r.duration_ms}ms · ${r.word_timings.length} words · ${wpm.toFixed(0)} wpm${flag}\n`,
-    );
+  // Ear vs eye decoupling: use s.tts_phonetic for spoken audio if provided, keeping s.tts_script for captions
+  if ((s.tts_script || s.tts_phonetic) && !s._audio) {
+    const spokenText = (s.tts_phonetic || s.tts_script || "").trim();
+    if (spokenText) {
+      const r = tts({
+        text: spokenText,
+        tone,
+        prev_text: scenes[i - 1]?.tts_phonetic || scenes[i - 1]?.tts_script,
+        next_text: scenes[i + 1]?.tts_phonetic || scenes[i + 1]?.tts_script,
+        out_path: join(projDir, "audio", `${s.id}.mp3`),
+      });
+      s._audio = `audio/${s.id}.mp3`; // relative to projDir; compositor stages it into public/
+      s.word_timings = r.word_timings;
+      s.duration_ms = r.duration_ms; // TTS-first write-back
+      const words = (spokenText.match(/\S+/g) || []).length;
+      const wpm = words / (r.duration_ms / 60000);
+      const [lo, hi] = s.quality_gate?.speaking_rate_wpm || [120, 180];
+      const flag =
+        wpm < lo || wpm > hi
+          ? `  ⚠️ WPM ${wpm.toFixed(0)} outside [${lo},${hi}]`
+          : "";
+      process.stderr.write(
+        `  ${s.id}: tts ${r.duration_ms}ms · ${r.word_timings.length} words · ${wpm.toFixed(0)} wpm${flag}${s.tts_phonetic ? " (phonetic)" : ""}\n`,
+      );
+    }
   }
 
   // generative b-roll — clip scenes with no supplied asset

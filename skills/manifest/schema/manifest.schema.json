@@ -89,6 +89,10 @@
           "type": "string",
           "description": "EXACT narration. Source of truth for TIMING — scene duration is derived from real audio length, never estimated. Also the on-screen text and caption source. When `voiceover` is set, keep tts_script verbatim-equal to the spoken clip so captions and on-screen copy match."
         },
+        "tts_phonetic": {
+          "type": "string",
+          "description": "Optional phonetic pronunciation string sent to the TTS voice engine. Enables ear vs eye decoupling: technical syntax stays in tts_script for on-screen typography/captions, while tts_phonetic ensures correct pronunciation (e.g. 'claud-dot-m-d')."
+        },
         "voiceover": {
           "type": "string",
           "description": "Path to a SUPPLIED real-voice audio clip to use as this scene's narration instead of TTS — e.g. a speaker's actual voice pulled from a recording via `scripts/extract-voice.mjs`. The producer uses it as the scene audio, measures its real duration, and recovers caption word-timings via STT. Use for apex quotes where authentic delivery beats TTS."

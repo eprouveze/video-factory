@@ -36,13 +36,20 @@ The manifest is enriched as the pipeline runs:
 - `project.json` (the reconciliation ledger) tracks planned-vs-produced per scene so a crash
   resumes instead of restarting.
 
-## TTS-first timing (non-negotiable)
+## TTS-first timing & Ear vs Eye Decoupling (non-negotiable)
 
 Audio is the temporal spine. Generate narration first, measure it with `ffprobe`, and time
 visuals to the **real** audio duration — never estimate. This is what prevents A/V drift.
 
+- **Ear vs Eye Decoupling**: If technical terms, filenames, or symbols are spoken, provide
+  `tts_phonetic` (e.g. "claud-dot-m-d", "slash-usage") for the audio engine, while keeping
+  `tts_script` formatted with proper punctuation and spelling for on-screen typography and captions.
+- **Fact-Check Gate**: For technical and explainer videos, generate `fact-check.md` linking every
+  claim to its documentation source before triggering voice synthesis.
+
 ## Authoring checklist
 - `intent` set; `hook` works muted; `format` chosen.
-- Every scene: exact `tts_script`, a **semantic** `visual_brief` (not a keyword), a `shot`.
+- Every scene: exact `tts_script` (+ optional `tts_phonetic`), a **semantic** `visual_brief` (not a keyword), a `shot`.
 - `brand` locked (palette/font/tone/LUT) so scenes don't drift.
 - Validate against the schema before the human gate.
+- After render: run `/video-factory:review` (18-frame contact sheet audit, target $\ge 8.0/10$).
