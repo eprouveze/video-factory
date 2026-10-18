@@ -157,19 +157,19 @@
       }
     },
     "compositor": {
-      "default": "hyperframes",
+      "default": "remotion",
       "adapters": {
-        "hyperframes": {
-          "path": "providers/compositor/hyperframes.mjs",
-          "tier": "core",
-          "needs": ["npx", "hyperframes"],
-          "note": "Fast deterministic HTML5+GSAP render via HyperFrames (3.3x faster, lighter files, built-in layout/contrast gates)."
-        },
         "remotion": {
           "path": "providers/compositor/remotion.mjs",
           "tier": "core",
           "needs": ["node"],
-          "note": "React+SVG compositor via Remotion renderer (legacy fallback)."
+          "note": "React+SVG compositor via Remotion renderer (production core)."
+        },
+        "hyperframes": {
+          "path": "providers/compositor/hyperframes.mjs",
+          "tier": "core",
+          "needs": ["npx", "hyperframes"],
+          "note": "Experimental fast deterministic HTML5+GSAP render via HyperFrames."
         }
       }
     },

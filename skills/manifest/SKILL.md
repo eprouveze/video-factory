@@ -3,7 +3,7 @@ name: manifest
 description: The manifest is Video Factory's source of truth. Use when authoring, validating, or updating a project's manifest.json — its lifecycle, the schema, and the TTS-first timing rule.
 allowed-tools: Read, Write, Edit, Bash
 metadata:
-  author: Golden Corpus
+  author: Emmanuel Prouvèze
 ---
 
 # The Manifest — source of truth

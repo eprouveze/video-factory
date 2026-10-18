@@ -34,7 +34,7 @@
         "shot": { "size": "medium", "angle": "eye", "motion": "push" }
       },
       "captions": "auto",
-      "provider_assignments": { "tts": "elevenlabs", "clip": "fal-veo" }
+      "provider_assignments": { "tts": "elevenlabs", "clip": "veo" }
     },
     {
       "id": "s3",
