@@ -13,11 +13,12 @@ export const tokens = (text) =>
     .map(norm)
     .filter(Boolean);
 
-// Sentences of a narration, each with the token range it covers in the scene.
+// Sentences of a narration, each with the token range it covers in the scene. An ellipsis is
+// a pause marker inside a sentence, not a boundary.
 export function sentences(text) {
   const out = [];
   let from = 0;
-  for (const raw of String(text ?? "").split(/(?<=[.!?…])\s+/)) {
+  for (const raw of String(text ?? "").split(/(?<=[.!?])\s+/)) {
     const n = tokens(raw).length;
     if (!n) continue;
     out.push({ text: raw.trim(), from, to: from + n });

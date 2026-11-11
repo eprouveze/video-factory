@@ -20,6 +20,12 @@ watch silent). Never open on a logo. Five templates: bold claim · curiosity gap
 - Body: longer holds (20-40s) when the message carries itself; cut on topic/tone shift.
 - Long-form: calm explanation interleaved with 5-10 quick-cut "burst sequences" every 2-3 min.
 - Music tempo: 60-80 BPM teaching/narrative; 100-120 BPM for energy/builds.
+- Flat, breathless narration is a slop tell even when b-roll and captions are perfect.
+- Pause at thought boundaries, not just sentence ends: use a period or ellipsis (`…`) after a
+  landed idea; use a shorter, comma-level pause for connective clauses.
+- Isolate a stat or punchline in its own short sentence, with a pause before and after.
+  Connective lines can run without a break.
+- Match voice-track breath rhythm to the cut rhythm; author it in `agents/screenwriter.md`.
 
 ## 3. B-roll motivation — SEMANTIC triggers, not time triggers
 Cut to b-roll when narration names a concept with a concrete visual referent. Never on a

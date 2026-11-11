@@ -52,7 +52,7 @@
     {
       "id": "s1",
       "title": "Hook",
-      "tts_script": "Most AI video is generic. You forget it before the next scroll.",
+      "tts_script": "Most AI video is generic. You forget it… before the next scroll.",
       "duration_estimate_s": 4.5,
       "visual": {
         "source": "code",
@@ -199,7 +199,7 @@
     {
       "id": "s5",
       "title": "Close",
-      "tts_script": "Video this good, made on purpose.",
+      "tts_script": "Video this good… made on purpose.",
       "duration_estimate_s": 3.5,
       "visual": {
         "source": "code",
