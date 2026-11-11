@@ -8,9 +8,8 @@ export * from "./anchors.mjs";
 
 // Fields the pipeline writes while producing. They are left out of the approval hash, so
 // producing a video never invalidates the approval, and any creative edit always does.
-const PRODUCED_TOP = new Set(["approval", "grid", "music"]);
+const PRODUCED_TOP = new Set(["approval", "grid", "_music_generated"]);
 const PRODUCED_SCENE = new Set([
-  "duration_ms",
   "audio_ms",
   "_audio",
   "_sfx",
@@ -22,12 +21,23 @@ function creativeView(manifest) {
   const top = {};
   for (const k of Object.keys(manifest).sort()) {
     if (PRODUCED_TOP.has(k) || k === "scenes") continue;
+    // a SUPPLIED music bed is a creative choice; a generated one is a product
+    if (k === "music" && manifest._music_generated) continue;
     top[k] = manifest[k];
   }
   top.scenes = (manifest.scenes ?? []).map((s) => {
     const o = {};
     for (const k of Object.keys(s).sort()) {
       if (PRODUCED_SCENE.has(k)) continue;
+      // duration_ms: the pipeline measures it for narrated and clip scenes, so there it is a
+      // product. On a silent scene it is authored; snap-grid keeps the authored length in
+      // audio_ms, so hashing that keeps the approval stable through production.
+      if (k === "duration_ms") {
+        const measured =
+          s.tts_script || s.tts_phonetic || s.voiceover || s.visual?.source === "clip";
+        if (!measured) o.duration_authored = s.audio_ms ?? s.duration_ms;
+        continue;
+      }
       if (k === "visual") {
         // a SUPPLIED asset is a creative choice; a generated one is a product
         const { asset, _generated, ...v } = s.visual ?? {};

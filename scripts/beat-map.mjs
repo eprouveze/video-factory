@@ -96,7 +96,8 @@ export function beatMapFromSamples(
   let { env, energy } = onsetEnvelope(low);
   const flat = (a) => !a.some((v) => v > 1e-6);
   // a bed with no low end (solo piano, pads): fall back to the full band
-  if (flat(env) && full) ({ env, energy } = onsetEnvelope(full));
+  if (flat(env) && full)
+    ({ env, energy } = onsetEnvelope(typeof full === "function" ? full() : full));
   const duration_ms = Math.round((low.length / SR) * 1000);
   if (flat(env))
     return {
@@ -173,7 +174,7 @@ export function beatMapFromSamples(
 
 export function beatMap(path, opts) {
   const low = decode(path, "highpass=f=30,lowpass=f=180");
-  const full = decode(path, null);
+  const full = () => decode(path, null);
   return beatMapFromSamples(low, full, opts);
 }
 

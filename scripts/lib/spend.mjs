@@ -36,19 +36,30 @@ export function makeSpend({ projDir, manifest, registry }) {
           `${capability}:${provider} would take spend to $${after.toFixed(2)}, over the $${b.cap_usd} cap`,
         );
     }
-    const res = fn();
-    appendFileSync(
-      ledgerPath,
-      JSON.stringify({
-        ts: new Date().toISOString(),
-        capability,
-        provider,
-        scene,
-        seconds: +seconds.toFixed(2),
-        est_usd: est,
-        real_usd: typeof res?.cost_usd === "number" ? res.cost_usd : null,
-      }) + "\n",
-    );
+    // the ledger line is written even when the adapter throws: a call that failed after
+    // reaching the provider may still have been billed, and the cap must count it
+    let res;
+    let failed = false;
+    try {
+      res = fn();
+    } catch (e) {
+      failed = true;
+      throw e;
+    } finally {
+      appendFileSync(
+        ledgerPath,
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          capability,
+          provider,
+          scene,
+          seconds: +seconds.toFixed(2),
+          est_usd: est,
+          real_usd: typeof res?.cost_usd === "number" ? res.cost_usd : null,
+          ...(failed ? { status: "failed" } : {}),
+        }) + "\n",
+      );
+    }
     return res;
   };
 }

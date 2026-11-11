@@ -122,6 +122,8 @@ export function lookOf(path, paletteHex) {
     },
   );
   const [width, height] = String(probe.stdout).trim().split(",").map(Number);
+  if (probe.status !== 0 || !width || !height)
+    throw new Error(`ffprobe could not read the size of ${path}`);
   const grey = raw(path, "scale=8:8:flags=area", "gray");
   const mean = grey.reduce((a, b) => a + b, 0) / 64;
   let ahash = "";

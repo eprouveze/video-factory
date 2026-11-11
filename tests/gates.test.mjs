@@ -187,7 +187,9 @@ test("approval: any creative edit makes it stale; produced fields do not", () =>
   assert.equal(isApproved(m), true);
   m.scenes[0].duration_ms = 4321;
   m.scenes[0].word_timings = [{ word: "Most", start_ms: 0, end_ms: 200 }];
+  m.scenes[0]._audio = "audio/s1.mp3";
   m.music = "audio/music.mp3";
+  m._music_generated = true;
   m.grid = { snapped: false };
   assert.equal(
     isApproved(m),
@@ -199,6 +201,32 @@ test("approval: any creative edit makes it stale; produced fields do not", () =>
   assert.ok(gatesOf(m, { requireApproval: true }).includes("approval"));
   const n = good();
   assert.ok(gatesOf(n, { requireApproval: true }).includes("approval"));
+  // a SUPPLIED music bed and a hand-set duration are creative: changing either is an edit
+  const bed = good();
+  bed.music = "audio/bed-a.mp3";
+  bed.approval = { hash: approvalHash(bed), by: "reviewer", at: "2026-01-01T00:00:00Z" };
+  bed.music = "audio/bed-b.mp3";
+  assert.equal(isApproved(bed), false, "swapping a supplied bed must need approval again");
+  bed.music = "audio/bed-a.mp3";
+  assert.equal(isApproved(bed), true);
+  // a silent scene's length is authored: re-pacing it is an edit, snapping it is not
+  const silent = good();
+  silent.scenes[1].tts_script = "";
+  silent.scenes[1].duration_ms = 5000;
+  silent.approval = { hash: approvalHash(silent), by: "reviewer", at: "2026-01-01T00:00:00Z" };
+  silent.scenes[1].audio_ms = 5000;
+  silent.scenes[1].duration_ms = 5400;
+  assert.equal(isApproved(silent), true, "snap-grid must not invalidate the approval");
+  delete silent.scenes[1].audio_ms;
+  silent.scenes[1].duration_ms = 9000;
+  assert.equal(isApproved(silent), false, "re-pacing a hand-set duration must need approval again");
+  // a narrated scene's duration is measured: writing it back is production, not an edit
+  const narr = good();
+  narr.scenes[1].duration_ms = 5000;
+  narr.approval = { hash: approvalHash(narr), by: "reviewer", at: "2026-01-01T00:00:00Z" };
+  narr.scenes[1].duration_ms = 4321;
+  narr.scenes[1]._audio = "audio/s2.mp3";
+  assert.equal(isApproved(narr), true);
 });
 
 const registry = {

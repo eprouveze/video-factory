@@ -32,6 +32,10 @@
       "type": "string",
       "description": "Global background music asset path."
     },
+    "_music_generated": {
+      "type": "boolean",
+      "description": "Produced: true when the pipeline generated `music` (a supplied bed is a creative choice and is part of the approval hash; a generated one is not)."
+    },
     "brand": {
       "type": "object",
       "description": "Visual + sonic identity carried across every scene. Locks consistency (drift is the #1 slop signal).",

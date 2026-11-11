@@ -96,6 +96,9 @@ process.on("uncaughtException", (e) => {
     process.stderr.write(`produce: stopped before spending: ${e.message}\n`);
     process.exit(4);
   }
+  try {
+    save(); // keep what was produced so a resumed run does not pay for it twice
+  } catch {}
   process.stderr.write(String(e?.stack || e) + "\n");
   process.exit(1);
 });
@@ -137,11 +140,13 @@ const tts = (req) => {
     const isSh = fbPath.endsWith(".sh");
     const cmd = isSh ? fbPath : "node";
     const args = isSh ? [] : [fbPath];
-    const res = JSON.parse(
-      execFileSync(cmd, args, {
-        input: JSON.stringify(req),
-        encoding: "utf8",
-      }),
+    const res = spend("tts", fallback, { scene: req.scene, seconds: req.est_seconds ?? 0 }, () =>
+      JSON.parse(
+        execFileSync(cmd, args, {
+          input: JSON.stringify(req),
+          encoding: "utf8",
+        }),
+      ),
     );
     if (!res.word_timings || res.word_timings.length === 0) {
       res.word_timings = synthesizeWordTimings(req.text, res.duration_ms);
@@ -234,6 +239,7 @@ for (let i = 0; i < scenes.length; i++) {
       process.stderr.write(
         `  ${s.id}: tts ${r.duration_ms}ms · ${r.word_timings.length} words · ${wpm.toFixed(0)} wpm${flag}${s.tts_phonetic ? " (phonetic)" : ""}\n`,
       );
+      save();
     }
   }
 
@@ -343,6 +349,7 @@ for (let i = 0; i < scenes.length; i++) {
         });
         s._sfx.push(`audio/${s.id}-sfx${k}.mp3`);
       } catch (e) {
+        if (e instanceof SpendRefused) throw e;
         process.stderr.write(
           `  ${s.id}: sfx skipped: ${String(e).slice(0, 80)}\n`,
         );
@@ -364,7 +371,7 @@ if (!manifest.music) {
   const mprov = reg.capabilities.music.default;
   try {
     // room for the holds snap-grid adds so every cut lands on a beat
-    const bedMs = total + scenes.length * 500;
+    const bedMs = total + scenes.length * 900;
     const mr = spend("music", mprov, { seconds: bedMs / 1000 }, () =>
       JSON.parse(
         execFileSync("node", [adapterPath("music", mprov)], {
@@ -378,8 +385,10 @@ if (!manifest.music) {
       ),
     );
     manifest.music = "audio/music.mp3";
+    manifest._music_generated = true;
     process.stderr.write(`  music: ${mprov} · ${mr.duration_ms}ms\n`);
   } catch (e) {
+    if (e instanceof SpendRefused) throw e;
     process.stderr.write(`  music skipped: ${String(e).slice(0, 120)}\n`);
   }
 }
