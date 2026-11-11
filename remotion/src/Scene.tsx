@@ -10,6 +10,7 @@ import {
 } from "remotion";
 import { components } from "./components";
 import { Captions } from "./Captions";
+import { GraphicsLayer } from "./Graphics";
 
 // Assets are staged into remotion/public/<project>/... by the compositor adapter,
 // so they resolve via staticFile. Code-source scenes need no asset (the zero-key path).
@@ -134,7 +135,15 @@ export const Scene = ({ scene, brand }: any) => {
     // eyebrow/value/label/bg/accent) override. Do NOT pass scene.title — it's an
     // internal label, not on-screen copy.
     const C = components[v.component] ?? components.TitleCard;
-    visual = <C text={scene.tts_script} {...(v.props || {})} brand={brand} />;
+    const card = <C text={scene.tts_script} {...(v.props || {})} brand={brand} />;
+    // a card with graphics moves up and leaves the lower third to them
+    visual = scene.graphics?.length ? (
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "66%" }}>
+        {card}
+      </div>
+    ) : (
+      card
+    );
   } else if (v.asset && v.source === "image") {
     visual = (
       <KenBurns
@@ -168,6 +177,7 @@ export const Scene = ({ scene, brand }: any) => {
       {visual}
       {scrim ? <Scrim center={v.overlay?.position === "center"} /> : null}
       {overlayOnMedia ? <Overlay overlay={v.overlay} brand={brand} /> : null}
+      <GraphicsLayer scene={scene} brand={brand} />
       {scene._audio ? <Audio src={asset(scene._audio)} /> : null}
       {(scene._sfx ?? []).map((p: string, i: number) => (
         <Audio key={i} src={asset(p)} volume={brand?.sfx_volume ?? 0.7} />

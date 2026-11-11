@@ -37,6 +37,19 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
   fidelity, real photos+slides over generation. *(Munich GAM recap)*
 - 🟡 Editor agent defined; auto-regenerate-on-fail loop not yet wired into production
 
+## Phase 0.25 — Grid, graphics, look lock
+**Goal:** the craft layer that makes a code-drawn video read as designed, at no extra spend.
+
+- ✅ Manifest audit with negative-control tests (`scripts/validate-manifest.mjs`, `tests/`)
+- ✅ Word-anchored explaining graphics (12 kinds) + the through-line device in the compositor
+- ✅ Beat map of the music bed + cut snapping (`scripts/beat-map.mjs`, `scripts/snap-grid.mjs`)
+- ✅ Approval bound to a hash of the plan; spend cap, stop switch and ledger in the producer
+- ✅ Look lock: `brand.style_suffix`, palette score, plate size and near-duplicate checks
+- ⬜ `est_usd` prices in `providers.json` (left empty: fill from each provider's current price
+  list; a cap cannot be enforced over an unpriced adapter)
+- ⬜ Graphics + through-line in the HyperFrames compositor (Remotion only today)
+- ⬜ `look_ref` honoured by the image adapters (passed as `refs`; adapters ignore it today)
+
 ## Phase 0.3 — Avatar + reframe
 **Goal:** your-own-avatar talking head where wanted; clean multi-aspect.
 

@@ -58,7 +58,23 @@
         "ref_lock": {
           "type": "boolean",
           "description": "Default ref_lock behavior across all scenes."
-        }
+        },
+        "style_suffix": {
+          "type": "string",
+          "description": "Look lock: one sentence of lens / light / texture / colour words appended VERBATIM to every image and clip brief, so every generated plate comes from the same style family. Write it once; never vary it per scene."
+        },
+        "look_ref": {
+          "type": "string",
+          "description": "Look lock: path to ONE reference frame. Passed to image/clip adapters as a colour-and-texture reference only (never as content)."
+        },
+        "palette_min_score": {
+          "type": "number",
+          "default": 60,
+          "description": "Minimum palette score (0-100, scripts/palette-score.mjs) a generated still must reach. Below it the still is remade at the source, not graded."
+        },
+        "music_volume": { "type": "number" },
+        "music_duck_volume": { "type": "number" },
+        "sfx_volume": { "type": "number" }
       }
     },
     "hook": {
@@ -79,6 +95,78 @@
           "type": "string",
           "description": "On-screen text that lands before the voiceover. Never a logo."
         }
+      }
+    },
+    "through_line": {
+      "type": "object",
+      "description": "The ONE device every scene carries, drawn in the same corner of every frame, that changes state as the story moves (a counter, a clock, a progress bar, a tag). It is what makes separate scenes read as one piece. Required unless rules.through_line is false.",
+      "required": ["states"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["counter", "progress", "clock", "tag"], "default": "counter" },
+        "label": { "type": "string", "description": "Small caption above the value, e.g. 'viewers still watching'." },
+        "position": { "enum": ["tl", "tr", "bl", "br"], "default": "tr" },
+        "prefix": { "type": "string" },
+        "suffix": { "type": "string" },
+        "decimals": { "type": "integer" },
+        "states": {
+          "type": "array",
+          "minItems": 2,
+          "description": "In scene order, starting at the first scene. Each state must move the value on.",
+          "items": {
+            "type": "object",
+            "required": ["scene", "value"],
+            "additionalProperties": false,
+            "properties": {
+              "scene": { "type": "string", "description": "Scene id where this state begins." },
+              "value": { "type": ["number", "string"] }
+            }
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "description": "Overrides for the audit (scripts/validate-manifest.mjs). Every override is a written-down choice.",
+      "additionalProperties": false,
+      "properties": {
+        "min_shot_ms": { "type": "integer", "default": 1000 },
+        "max_static_ms": { "type": "integer", "default": 4000 },
+        "min_graphic_kinds": { "type": "integer", "default": 6 },
+        "through_line": { "type": "boolean", "default": true },
+        "graphic_per_sentence": { "type": "boolean", "default": true }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "description": "Spend control, enforced by the producer (not by the agent's good intentions).",
+      "additionalProperties": false,
+      "properties": {
+        "cap_usd": { "type": "number", "description": "The producer refuses any paid call that would take recorded spend past this." },
+        "frozen": { "type": "boolean", "description": "Stop switch: true = no paid call runs. Set it the moment quality is in doubt; fix the plan, then unfreeze." }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "description": "Written by scripts/approve.mjs after a person approves the storyboard. Stored against a hash of the creative content: any later edit makes it stale and the producer stops before spending.",
+      "additionalProperties": false,
+      "properties": {
+        "hash": { "type": "string" },
+        "by": { "type": "string" },
+        "at": { "type": "string" }
+      }
+    },
+    "grid": {
+      "type": "object",
+      "description": "Produced by scripts/snap-grid.mjs: the beat map of the music bed that every cut sits on.",
+      "additionalProperties": false,
+      "properties": {
+        "snapped": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "bpm": { "type": ["number", "null"] },
+        "confidence": { "type": "number" },
+        "beats_ms": { "type": "array", "items": { "type": "number" } },
+        "downbeats_ms": { "type": "array", "items": { "type": "number" } }
       }
     },
     "scenes": {
@@ -157,6 +245,10 @@
               "type": "string",
               "description": "Path to the produced/supplied asset (filled by the pipeline)."
             },
+            "_generated": {
+              "type": "boolean",
+              "description": "Produced: true when the pipeline generated `asset` (a supplied asset is a creative choice and is part of the approval hash; a generated one is not)."
+            },
             "ref_lock": {
               "type": "boolean",
               "description": "Whether to lock generative video with an image still frame."
@@ -223,6 +315,51 @@
             "image": { "type": "string" },
             "music": { "type": "string" },
             "avatar": { "type": "string" }
+          }
+        },
+        "graphics": {
+          "type": "array",
+          "description": "Explaining graphics drawn in code over the scene. Every narrated sentence needs one (or the scene sets `stillness`). Each enters ON the spoken word that names it and stays to the end of the scene, so a shot builds instead of holding still. Vary the kind: never the same one three times running.",
+          "items": {
+            "type": "object",
+            "required": ["kind", "anchor"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": ["counter", "bar", "gauge", "tally", "stamp", "tag", "label", "terminal", "chat", "strike", "checklist", "timeline"],
+                "description": "number → counter / bar / gauge / tally · claim or category → stamp / tag · place or thing → label · tech or speech → terminal / chat · correction → strike · process → checklist / timeline"
+              },
+              "anchor": { "type": "string", "description": "A word or short phrase from this scene's tts_script. The graphic enters when it is spoken." },
+              "occurrence": { "type": "integer", "minimum": 1, "description": "Which occurrence of the anchor, when it is said more than once." },
+              "slot": { "enum": ["tl", "tr", "ml", "mr", "bl", "br", "center"], "description": "Where it sits. Omit to auto-place. The bottom band belongs to the captions." },
+              "title": { "type": "string", "description": "Small mono heading on the panel." },
+              "panel": { "type": "boolean", "description": "false = draw without the panel background." },
+              "hold_ms": { "type": "integer", "description": "Remove after this long. Omit to hold to the end of the scene." },
+              "props": { "type": "object", "description": "Per kind — counter {from,to,prefix,suffix,decimals,label} · bar {items:[{label,value}],unit,max} · gauge {value,max,display,label} · tally {count,lit,label} · stamp {text,rotate} · tag {class,text,sub} · label {text,sub,source} · terminal {lines[],prompt,cps} · chat {messages:[{from,text}]} · strike {text,replace} · checklist {items[]} · timeline {points:[{label,value}]}" }
+            }
+          }
+        },
+        "stillness": {
+          "type": "string",
+          "description": "The written reason this scene deliberately carries no explaining graphic (e.g. 'the quote holds alone'). Exempts it from the graphic-per-sentence gate."
+        },
+        "run": {
+          "type": "boolean",
+          "description": "true = part of a declared fast run (3-4 simple images on the beat); exempts the shot from the 1-second minimum."
+        },
+        "audio_ms": {
+          "type": "integer",
+          "description": "Measured narration length, kept when snap-grid lengthens duration_ms so the cut lands on a beat."
+        },
+        "_look": {
+          "type": "object",
+          "description": "Produced: look check of the generated still (scripts/palette-score.mjs).",
+          "additionalProperties": false,
+          "properties": {
+            "palette_score": { "type": "number" },
+            "width": { "type": "integer" },
+            "height": { "type": "integer" },
+            "ahash": { "type": "string" }
           }
         },
         "quality_gate": {

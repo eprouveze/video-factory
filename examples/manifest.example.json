@@ -1,51 +1,224 @@
 {
   "version": "1",
   "title": "video-factory-demo",
-  "intent": "Show, in 15 seconds, why Video Factory produces non-slop video — renders zero-key from code-animated scenes.",
-  "format": ["16:9", "9:16"],
+  "intent": "Show, in 25 seconds, why Video Factory produces non-slop video. Renders zero-key: every scene is drawn in code.",
+  "format": [
+    "16:9",
+    "9:16"
+  ],
   "fps": 30,
   "brand": {
-    "palette": ["#0b0b0f", "#ffd24a"],
+    "palette": [
+      "#0b0b0f",
+      "#ffd24a"
+    ],
     "font": "Inter, system-ui, sans-serif",
     "tone": "calm authoritative",
-    "music_style": "warm lo-fi piano, restrained"
+    "music_style": "warm lo-fi piano with a soft kick, 96 BPM, restrained"
   },
   "hook": {
     "type": "bold_claim",
-    "text": "Most AI video is slop. Watch what good looks like."
+    "text": "Most AI video is slop."
+  },
+  "through_line": {
+    "kind": "counter",
+    "label": "viewers still watching",
+    "suffix": "%",
+    "position": "tr",
+    "states": [
+      {
+        "scene": "s1",
+        "value": 100
+      },
+      {
+        "scene": "s2",
+        "value": 50
+      },
+      {
+        "scene": "s3",
+        "value": 62
+      },
+      {
+        "scene": "s4",
+        "value": 81
+      },
+      {
+        "scene": "s5",
+        "value": 96
+      }
+    ]
   },
   "scenes": [
     {
       "id": "s1",
       "title": "Hook",
       "tts_script": "Most AI video is generic. You forget it before the next scroll.",
-      "duration_estimate_s": 3,
-      "visual": { "source": "code", "component": "TitleCard" }
+      "duration_estimate_s": 4.5,
+      "visual": {
+        "source": "code",
+        "component": "TitleCard",
+        "props": {
+          "eyebrow": "the problem",
+          "headline": "Most AI video is slop."
+        }
+      },
+      "graphics": [
+        {
+          "kind": "strike",
+          "anchor": "forget",
+          "slot": "bl",
+          "props": {
+            "text": "memorable",
+            "replace": "gone in one scroll"
+          }
+        }
+      ]
     },
     {
       "id": "s2",
       "title": "The stat",
-      "tts_script": "Fifty to sixty percent of viewers leave in the first three seconds.",
+      "tts_script": "Half of your viewers leave in the first three seconds.",
       "duration_estimate_s": 4,
       "visual": {
         "source": "code",
         "component": "StatCard",
-        "props": { "value": "3s", "label": "where most viewers leave" }
-      }
+        "props": {
+          "value": "3s",
+          "label": "where most viewers leave"
+        }
+      },
+      "graphics": [
+        {
+          "kind": "gauge",
+          "anchor": "leave",
+          "slot": "bl",
+          "title": "drop-off",
+          "props": {
+            "value": 0.5,
+            "label": "gone by 0:03"
+          }
+        }
+      ]
     },
     {
       "id": "s3",
       "title": "The fix",
-      "tts_script": "Video Factory writes a reviewable plan first, then assembles every layer deliberately.",
-      "duration_estimate_s": 5,
-      "visual": { "source": "code", "component": "TitleCard" }
+      "tts_script": "Video Factory writes a plan you can review. Then it builds every layer on purpose.",
+      "duration_estimate_s": 6,
+      "visual": {
+        "source": "code",
+        "component": "TitleCard",
+        "props": {
+          "eyebrow": "the fix",
+          "headline": "Plan first. Spend second."
+        }
+      },
+      "graphics": [
+        {
+          "kind": "checklist",
+          "anchor": "plan",
+          "slot": "bl",
+          "title": "the plan",
+          "props": {
+            "items": [
+              "hook",
+              "script",
+              "shots",
+              "cost"
+            ]
+          }
+        },
+        {
+          "kind": "timeline",
+          "anchor": "every layer",
+          "slot": "br",
+          "title": "the build",
+          "props": {
+            "points": [
+              {
+                "label": "01",
+                "value": "voice"
+              },
+              {
+                "label": "02",
+                "value": "picture"
+              },
+              {
+                "label": "03",
+                "value": "music"
+              },
+              {
+                "label": "04",
+                "value": "captions"
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "id": "s4",
+      "title": "The grid",
+      "tts_script": "Every cut lands on a beat. Every graphic lands on its word.",
+      "duration_estimate_s": 5.5,
+      "visual": {
+        "source": "code",
+        "component": "ComparisonCard",
+        "props": {
+          "headline": "Timed, not guessed",
+          "leftTitle": "Slop",
+          "leftText": "cuts on a timer",
+          "rightTitle": "Made",
+          "rightText": "cuts on the music"
+        }
+      },
+      "graphics": [
+        {
+          "kind": "tag",
+          "anchor": "beat",
+          "slot": "bl",
+          "props": {
+            "class": "grid",
+            "text": "cut on the beat",
+            "sub": "tolerance 30 ms"
+          }
+        },
+        {
+          "kind": "terminal",
+          "anchor": "graphic",
+          "slot": "br",
+          "props": {
+            "lines": [
+              "validate-manifest demo",
+              "PASS: 0 errors"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "s5",
       "title": "Close",
       "tts_script": "Video this good, made on purpose.",
-      "duration_estimate_s": 3,
-      "visual": { "source": "code", "component": "TitleCard" }
+      "duration_estimate_s": 3.5,
+      "visual": {
+        "source": "code",
+        "component": "CTA",
+        "props": {
+          "headline": "Made on purpose.",
+          "subtext": "video-factory"
+        }
+      },
+      "graphics": [
+        {
+          "kind": "stamp",
+          "anchor": "good",
+          "slot": "br",
+          "props": {
+            "text": "not slop"
+          }
+        }
+      ]
     }
   ]
 }

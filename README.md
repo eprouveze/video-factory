@@ -25,6 +25,19 @@ brief
   → finish (optional)         → a "look" (cinematic / warm-doc / punchy / noir)
 ```
 
+What the plan has to carry before anyone sees it (checked by `scripts/validate-manifest.mjs`,
+each gate with a negative-control test in `tests/`, run with `npm test`):
+
+- a hook readable inside the first second;
+- **one explaining graphic per narrated sentence**, drawn in code and entering on the word
+  that names it (12 kinds: counter, bar, gauge, tally, stamp, tag, label, terminal, chat,
+  strike, checklist, timeline);
+- a **through-line device**: one counter, clock or tag carried in every frame that moves with
+  the story;
+- no shot under a second, no still move repeated, **every cut on a beat** of the music bed;
+- an **approval bound to a hash of the plan** and a **spend cap enforced in the runner**;
+- generated stills scored against the brand palette, with one style suffix on every brief.
+
 The `manifest.json` is the source of truth. If the output is wrong, you fix the manifest —
 not the code. Full design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -75,7 +88,9 @@ upstream changes.
 
 ## Credits & license
 
-MIT (see [LICENSE](LICENSE)). Patterns vendored with thanks from the MIT
+MIT (see [LICENSE](LICENSE)). The grid, graphic-per-line, through-line and audit rules are
+adapted from the production notes published at [claudia.gallery](https://claudia.gallery/wiki/)
+(Claudia is an open character by anabology). Patterns vendored with thanks from the MIT
 [claude-code-video-toolkit](https://github.com/digitalsamba/claude-code-video-toolkit) and
 ideas from [OpenMontage](https://github.com/calesthio/OpenMontage) (AGPL — ideas only, no
 code). Composition by [Remotion](https://remotion.dev) (separate license — free for

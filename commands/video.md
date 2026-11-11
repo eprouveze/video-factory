@@ -16,12 +16,17 @@ gate come BEFORE any expensive generation call.**
    Apply `skills/quality-rules` — hook in first 3s, motivated b-roll, pacing, shot variety,
    and a **`/deslop` pass** on all narration + on-screen text (strip AI-writing tells before
    the manifest is locked — §8).
-2. Validate the manifest against `skills/manifest/schema/manifest.schema.json`.
+2. Validate the manifest against `skills/manifest/schema/manifest.schema.json`, then run the
+   audit: `node scripts/validate-manifest.mjs <project>`. Fix every error (hook, a graphic per
+   sentence, the through-line, pacing, budget) before going on.
 
 ## Phase B — HUMAN GATE (the reversibility checkpoint)
 3. Show the user the manifest as a readable storyboard (scene list: narration + visual brief
    + which provider each scene will use + a rough cost estimate from `providers.json` tiers).
    **Ask for approval. Make no paid call until they approve.** They can edit any scene first.
+   When they say yes, record it: `node scripts/approve.mjs <project> --by "<their name>"`.
+   The producer checks that approval against a hash of the plan and refuses to spend if the
+   plan changed afterwards. Silence is never approval, and you never approve on their behalf.
 
 ## Phase C — Production (paid; resumable via project.json)
 Run the **producer** agent. Per scene, in this order:
@@ -43,6 +48,12 @@ Run the **producer** agent. Per scene, in this order:
    `visual_brief`. Below `min_semantic_score` → regenerate, don't continue silently.
 8. **Captions**: if `word_timings` empty, recover via `stt`. **Music/SFX** per scene.
    Update `project.json` after each scene (resume-safe).
+
+8b. **Grid**: once the music bed exists the producer measures its beats and holds each scene so
+   its cut lands on one (`scripts/snap-grid.mjs`). If it reports the bed has no reliable pulse,
+   ask for a bed with a clear kick and re-run.
+8c. **Audit again**: `node scripts/validate-manifest.mjs <project>` now also checks the cuts
+   against the beats and every generated still against the palette.
 
 ## Phase D — Compose
 9. `/video-factory:render` for each `format` → `output/`. Report paths + total cost.

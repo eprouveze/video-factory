@@ -64,10 +64,13 @@ async function main() {
   });
 
   const inputProps = { manifest, format };
+  // optional: render with an already-installed Chromium instead of downloading one
+  const browserExecutable = process.env.REMOTION_BROWSER_EXECUTABLE || undefined;
   const composition = await selectComposition({
     serveUrl,
     id: "Video",
     inputProps,
+    browserExecutable,
   });
 
   const out = resolve(req.out_path);
@@ -79,6 +82,7 @@ async function main() {
     scale,
     outputLocation: out,
     inputProps,
+    browserExecutable,
   });
 
   const duration_ms = Math.round(

@@ -3,10 +3,18 @@
   "version": "1",
   "title": "REPLACE-ME",
   "intent": "REPLACE-ME — who this is for and what it must achieve. Name the real event + the one idea.",
-  "format": ["16:9", "9:16"],
+  "format": [
+    "16:9",
+    "9:16"
+  ],
   "fps": 30,
   "brand": {
-    "palette": ["#0176D3", "#032D60", "#FFFFFF", "#BAE3FF"],
+    "palette": [
+      "#0176D3",
+      "#032D60",
+      "#FFFFFF",
+      "#BAE3FF"
+    ],
     "font": "Inter",
     "music_style": "restrained corporate-cinematic build, 70-90 BPM, no drop, ducked under voice",
     "tone": "confident, earned, field-credible — a story with a takeaway, not a brag. Credit the team, not the self."
@@ -14,6 +22,25 @@
   "hook": {
     "type": "bold_claim",
     "text": "REPLACE-ME — the single most arresting fact/number. Lands MUTED. Never a logo."
+  },
+  "through_line": {
+    "kind": "tag",
+    "label": "REPLACE-ME: e.g. the event clock or the stage of the story",
+    "position": "tr",
+    "states": [
+      {
+        "scene": "s1",
+        "value": "REPLACE 1"
+      },
+      {
+        "scene": "s4",
+        "value": "REPLACE 2"
+      },
+      {
+        "scene": "s7",
+        "value": "REPLACE 3"
+      }
+    ]
   },
   "scenes": [
     {
@@ -24,7 +51,10 @@
       "visual": {
         "source": "code",
         "component": "StatCard",
-        "props": { "value": "REPLACE", "label": "REPLACE" }
+        "props": {
+          "value": "REPLACE",
+          "label": "REPLACE"
+        }
       },
       "captions": "none"
     },
@@ -36,10 +66,26 @@
       "visual": {
         "source": "clip",
         "visual_brief": "REPLACE-ME — ABSTRACT, textless, no faces; motivated by the tension (e.g. a thread about to snap). On-brand palette.",
-        "shot": { "size": "close", "angle": "eye", "motion": "push" }
+        "shot": {
+          "size": "close",
+          "angle": "eye",
+          "motion": "push"
+        }
       },
-      "provider_assignments": { "clip": "veo" },
-      "captions": "auto"
+      "provider_assignments": {
+        "clip": "veo"
+      },
+      "captions": "auto",
+      "graphics": [
+        {
+          "kind": "label",
+          "anchor": "the",
+          "props": {
+            "text": "REPLACE",
+            "source": "REPLACE"
+          }
+        }
+      ]
     },
     {
       "id": "s3",
@@ -50,10 +96,24 @@
         "source": "image",
         "asset": "assets/REPLACE-photo.jpg",
         "visual_brief": "REPLACE-ME — real, colour-corrected stage photo; Ken-Burns push. Add a small lower-third with name + role.",
-        "shot": { "size": "wide", "angle": "eye", "motion": "push" },
+        "shot": {
+          "size": "wide",
+          "angle": "eye",
+          "motion": "push"
+        },
         "objectPosition": "50% 42%"
       },
-      "captions": "auto"
+      "captions": "auto",
+      "graphics": [
+        {
+          "kind": "tag",
+          "anchor": "name",
+          "props": {
+            "class": "REPLACE",
+            "text": "REPLACE"
+          }
+        }
+      ]
     },
     {
       "id": "s4",
@@ -69,7 +129,9 @@
         }
       },
       "captions": "auto",
-      "sfx": ["impact hit on cut-in to card"]
+      "sfx": [
+        "impact hit on cut-in to card"
+      ]
     },
     {
       "id": "s5",
@@ -79,13 +141,14 @@
       "duration_estimate_s": 4,
       "visual": {
         "source": "code",
-        "component": "TitleCard",
+        "component": "QuoteCard",
         "props": {
-          "title": "REPLACE — ATTRIBUTION",
-          "text": "REPLACE — the verbatim quote"
+          "quote": "REPLACE: the verbatim quote",
+          "author": "REPLACE: attribution"
         }
       },
-      "captions": "auto"
+      "captions": "auto",
+      "stillness": "the verbatim quote holds alone, in the speaker's real voice"
     },
     {
       "id": "s6",
@@ -94,10 +157,14 @@
       "duration_estimate_s": 5,
       "visual": {
         "source": "code",
-        "component": "TitleCard",
+        "component": "FeatureSplit",
         "props": {
-          "title": "REPLACE — FRAMEWORK",
-          "text": "REPLACE · the moves · one line"
+          "headline": "REPLACE: FRAMEWORK",
+          "features": [
+            "REPLACE",
+            "REPLACE",
+            "REPLACE"
+          ]
         }
       },
       "captions": "auto"
@@ -111,11 +178,18 @@
         "source": "image",
         "asset": "assets/REPLACE-cover.png",
         "visual_brief": "REPLACE-ME — the polished cover/poster as the prestige close; slow push, music swells and fades.",
-        "shot": { "size": "close", "angle": "eye", "motion": "push" },
+        "shot": {
+          "size": "close",
+          "angle": "eye",
+          "motion": "push"
+        },
         "fit": "contain"
       },
       "captions": "none",
-      "sfx": ["low boom on cover hold"]
+      "sfx": [
+        "low boom on cover hold"
+      ],
+      "stillness": "the cover is the close"
     }
   ]
 }

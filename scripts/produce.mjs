@@ -7,6 +7,12 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { estimateCost, isApproved } from "./lib/manifest-lib.mjs";
+import { validate } from "./validate-manifest.mjs";
+import { makeSpend, SpendRefused } from "./lib/spend.mjs";
+import { lookOf } from "./palette-score.mjs";
+import { beatMap } from "./beat-map.mjs";
+import { snapToGrid } from "./snap-grid.mjs";
 
 function alignDisplayWords(displayScript, phoneticTimings) {
   const displayWords = (displayScript || "").trim().split(/\s+/).filter(Boolean);
@@ -63,21 +69,68 @@ const reg = JSON.parse(
 const adapterPath = (cap, name) =>
   join(ROOT, reg.capabilities[cap].adapters[name].path);
 
+// ── gates before any spend ─────────────────────────────────────────────────────────────
+// The plan must pass its audit, and if it will make a paid call it must carry an approval
+// that still matches its content. Both are checked here, in the runner.
+const audit = validate(manifest, { registry: reg });
+for (const w of audit.warnings)
+  process.stderr.write(`  warn [${w.gate}] ${w.scene ?? ""} ${w.message}\n`);
+if (!audit.pass) {
+  for (const e of audit.errors)
+    process.stderr.write(`  ERROR [${e.gate}] ${e.scene ?? ""} ${e.message}\n`);
+  process.stderr.write("produce: the plan fails its audit (scripts/validate-manifest.mjs); nothing was run\n");
+  process.exit(1);
+}
+const planned = estimateCost(manifest, reg);
+if (planned.calls.length && !isApproved(manifest)) {
+  process.stderr.write(
+    `produce: ${planned.calls.length} paid call(s) planned and the plan is ${manifest.approval ? "changed since it was approved" : "not approved"}.\n` +
+      `  Show the storyboard to a person, then: node scripts/approve.mjs ${projDir} --by "<name>"\n`,
+  );
+  process.exit(3);
+}
+const spend = makeSpend({ projDir, manifest, registry: reg });
+process.on("uncaughtException", (e) => {
+  if (e instanceof SpendRefused) {
+    save(); // keep what was produced so the run resumes
+    process.stderr.write(`produce: stopped before spending: ${e.message}\n`);
+    process.exit(4);
+  }
+  process.stderr.write(String(e?.stack || e) + "\n");
+  process.exit(1);
+});
+const styleSuffix = manifest.brand?.style_suffix ? ` ${manifest.brand.style_suffix.trim()}` : "";
+const lookRefs = manifest.brand?.look_ref ? [join(projDir, manifest.brand.look_ref)] : undefined;
+const save = () => writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+const lookCheck = (s, rel) => {
+  try {
+    s._look = lookOf(join(projDir, rel), manifest.brand?.palette);
+    const min = manifest.brand?.palette_min_score ?? 60;
+    if (typeof s._look.palette_score === "number" && s._look.palette_score < min)
+      process.stderr.write(`  ${s.id}: ⚠️ palette score ${s._look.palette_score} < ${min}: remake it, do not grade it\n`);
+  } catch (e) {
+    process.stderr.write(`  ${s.id}: look check skipped: ${String(e).slice(0, 80)}\n`);
+  }
+};
+
 const tts = (req) => {
   const prov = manifest.provider_assignments?.tts || reg.capabilities?.tts?.default || "elevenlabs";
   const primaryAdapter = adapterPath("tts", prov);
   try {
-    const res = JSON.parse(
-      execFileSync("node", [primaryAdapter], {
-        input: JSON.stringify(req),
-        encoding: "utf8",
-      }),
+    const res = spend("tts", prov, { scene: req.scene, seconds: req.est_seconds ?? 0 }, () =>
+      JSON.parse(
+        execFileSync("node", [primaryAdapter], {
+          input: JSON.stringify(req),
+          encoding: "utf8",
+        }),
+      ),
     );
     if (!res.word_timings || res.word_timings.length === 0) {
       res.word_timings = synthesizeWordTimings(req.text, res.duration_ms);
     }
     return res;
   } catch (err) {
+    if (err instanceof SpendRefused) throw err;
     const fallback = reg.capabilities?.tts?.fallback || "say";
     process.stderr.write(`  TTS ${prov} failed (${String(err).slice(0, 60)}); falling back to ${fallback}...\n`);
     const fbPath = adapterPath("tts", fallback);
@@ -159,6 +212,8 @@ for (let i = 0; i < scenes.length; i++) {
         prev_text: scenes[i - 1]?.tts_phonetic || scenes[i - 1]?.tts_script,
         next_text: scenes[i + 1]?.tts_phonetic || scenes[i + 1]?.tts_script,
         out_path: join(projDir, "audio", `${s.id}.mp3`),
+        scene: s.id,
+        est_seconds: s.duration_estimate_s ?? 4,
       });
       const rawTimings = s.tts_phonetic && s.tts_script
         ? alignDisplayWords(s.tts_script, r.word_timings)
@@ -184,7 +239,7 @@ for (let i = 0; i < scenes.length; i++) {
 
   // generative b-roll — clip scenes with no supplied asset
   if (s.visual?.source === "clip" && !s.visual.asset) {
-    const brief = s.visual.visual_brief || s.title || s.tts_script;
+    const brief = (s.visual.visual_brief || s.title || s.tts_script) + styleSuffix;
     const aspect = manifest.format?.[0] || "16:9";
 
     // reference-frame locking: generate a still and seed the clip with it (i2v).
@@ -194,34 +249,43 @@ for (let i = 0; i < scenes.length; i++) {
     if (!refFrame && lock) {
       const iprov =
         s.provider_assignments?.image || reg.capabilities.image.default;
-      const ir = JSON.parse(
-        execFileSync("node", [adapterPath("image", iprov)], {
-          input: JSON.stringify({
-            brief,
-            aspect,
-            out_path: join(projDir, "frames", `${s.id}.png`),
+      const ir = spend("image", iprov, { scene: s.id }, () =>
+        JSON.parse(
+          execFileSync("node", [adapterPath("image", iprov)], {
+            input: JSON.stringify({
+              brief,
+              aspect,
+              refs: lookRefs,
+              out_path: join(projDir, "frames", `${s.id}.png`),
+            }),
+            encoding: "utf8",
           }),
-          encoding: "utf8",
-        }),
+        ),
       );
       refFrame = ir.image_path;
+      lookCheck(s, `frames/${s.id}.png`);
       process.stderr.write(`  ${s.id}: ref-frame via ${iprov}\n`);
     }
 
     const prov = s.provider_assignments?.clip || reg.capabilities.clip.default;
-    const r = JSON.parse(
-      execFileSync("node", [adapterPath("clip", prov)], {
-        input: JSON.stringify({
-          brief,
-          aspect,
-          duration_s: s.duration_ms ? Math.round(s.duration_ms / 1000) : 6,
-          ref_frame: refFrame,
-          out_path: join(projDir, "clips", `${s.id}.mp4`),
+    const clipS = s.duration_ms ? Math.round(s.duration_ms / 1000) : 6;
+    const r = spend("clip", prov, { scene: s.id, seconds: clipS }, () =>
+      JSON.parse(
+        execFileSync("node", [adapterPath("clip", prov)], {
+          input: JSON.stringify({
+            brief,
+            aspect,
+            duration_s: clipS,
+            ref_frame: refFrame,
+            out_path: join(projDir, "clips", `${s.id}.mp4`),
+          }),
+          encoding: "utf8",
         }),
-        encoding: "utf8",
-      }),
+      ),
     );
     s.visual.asset = `clips/${s.id}.mp4`;
+    s.visual._generated = true;
+    save();
     if (!s.duration_ms) s.duration_ms = r.duration_ms;
     process.stderr.write(
       `  ${s.id}: clip via ${prov}${refFrame ? " (i2v from ref)" : ""} · ${r.duration_ms}ms\n`,
@@ -231,7 +295,7 @@ for (let i = 0; i < scenes.length; i++) {
   // generative image scenes (source:image, no supplied asset).
   // Text-heavy briefs (charts/labels/UI/words) auto-route to gpt-image — far better at text-in-image.
   if (s.visual?.source === "image" && !s.visual.asset) {
-    const brief = s.visual.visual_brief || s.title || "";
+    const brief = (s.visual.visual_brief || s.title || "") + styleSuffix;
     const textHeavy =
       /\b(text|label|chart|diagram|graph|word|title|caption|number|stat|sign|logo|ui|screen|interface|headline|menu|axis|radar)\b/i.test(
         brief,
@@ -239,17 +303,23 @@ for (let i = 0; i < scenes.length; i++) {
     let iprov = s.provider_assignments?.image || reg.capabilities.image.default;
     if (textHeavy && reg.capabilities.image.adapters["gpt-image"])
       iprov = "gpt-image";
-    const ir = JSON.parse(
-      execFileSync("node", [adapterPath("image", iprov)], {
-        input: JSON.stringify({
-          brief,
-          aspect: manifest.format?.[0] || "16:9",
-          out_path: join(projDir, "assets", `${s.id}.png`),
+    const ir = spend("image", iprov, { scene: s.id }, () =>
+      JSON.parse(
+        execFileSync("node", [adapterPath("image", iprov)], {
+          input: JSON.stringify({
+            brief,
+            aspect: manifest.format?.[0] || "16:9",
+            refs: lookRefs,
+            out_path: join(projDir, "assets", `${s.id}.png`),
+          }),
+          encoding: "utf8",
         }),
-        encoding: "utf8",
-      }),
+      ),
     );
     s.visual.asset = `assets/${s.id}.png`;
+    s.visual._generated = true;
+    lookCheck(s, s.visual.asset);
+    save();
     process.stderr.write(
       `  ${s.id}: image via ${iprov}${textHeavy ? " (text-heavy)" : ""}\n`,
     );
@@ -261,12 +331,15 @@ for (let i = 0; i < scenes.length; i++) {
     const sprov = reg.capabilities.sfx.default;
     s.sfx.forEach((brief, k) => {
       try {
-        execFileSync("node", [adapterPath("sfx", sprov)], {
-          input: JSON.stringify({
-            brief,
-            out_path: join(projDir, "audio", `${s.id}-sfx${k}.mp3`),
-          }),
-          encoding: "utf8",
+        spend("sfx", sprov, { scene: s.id }, () => {
+          execFileSync("node", [adapterPath("sfx", sprov)], {
+            input: JSON.stringify({
+              brief,
+              out_path: join(projDir, "audio", `${s.id}-sfx${k}.mp3`),
+            }),
+            encoding: "utf8",
+          });
+          return {};
         });
         s._sfx.push(`audio/${s.id}-sfx${k}.mp3`);
       } catch (e) {
@@ -290,15 +363,19 @@ if (!manifest.music) {
     "calm cinematic underscore, subtle and unobtrusive";
   const mprov = reg.capabilities.music.default;
   try {
-    const mr = JSON.parse(
-      execFileSync("node", [adapterPath("music", mprov)], {
-        input: JSON.stringify({
-          brief: musicBrief,
-          duration_ms: total,
-          out_path: join(projDir, "audio", "music.mp3"),
+    // room for the holds snap-grid adds so every cut lands on a beat
+    const bedMs = total + scenes.length * 500;
+    const mr = spend("music", mprov, { seconds: bedMs / 1000 }, () =>
+      JSON.parse(
+        execFileSync("node", [adapterPath("music", mprov)], {
+          input: JSON.stringify({
+            brief: musicBrief,
+            duration_ms: bedMs,
+            out_path: join(projDir, "audio", "music.mp3"),
+          }),
+          encoding: "utf8",
         }),
-        encoding: "utf8",
-      }),
+      ),
     );
     manifest.music = "audio/music.mp3";
     process.stderr.write(`  music: ${mprov} · ${mr.duration_ms}ms\n`);
@@ -307,5 +384,20 @@ if (!manifest.music) {
   }
 }
 
-writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+// the grid: measure the bed's beats and hold each scene so its cut lands on one
+if (manifest.music && !manifest.grid) {
+  try {
+    const beats = beatMap(join(projDir, manifest.music));
+    const r = snapToGrid(manifest, beats);
+    process.stderr.write(
+      manifest.grid.snapped
+        ? `  grid: ${beats.bpm} BPM · ${r.snapped} cuts on beats · ${r.held_ms}ms of holds\n`
+        : `  grid: not snapped (${manifest.grid.reason}); cuts stay on word boundaries\n`,
+    );
+  } catch (e) {
+    process.stderr.write(`  grid skipped: ${String(e).slice(0, 120)}\n`);
+  }
+}
+
+save();
 process.stdout.write(`produced ${scenes.length} scenes → ${manifestPath}\n`);
