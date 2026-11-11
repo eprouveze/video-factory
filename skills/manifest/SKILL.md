@@ -51,5 +51,13 @@ visuals to the **real** audio duration — never estimate. This is what prevents
 - `intent` set; `hook` works muted; `format` chosen.
 - Every scene: exact `tts_script` (+ optional `tts_phonetic`), a **semantic** `visual_brief` (not a keyword), a `shot`.
 - `brand` locked (palette/font/tone/LUT) so scenes don't drift.
-- Validate against the schema before the human gate.
+- `through_line` named and escalating; every sentence has a `graphics[]` entry anchored on one
+  of its words (or the scene sets `stillness` with the reason).
+- Validate against the schema, then run the audit: `node scripts/validate-manifest.mjs <project>`.
+  It must print PASS before the human gate.
+- After a person approves: `node scripts/approve.mjs <project> --by "<name>"`. The approval is
+  stored against a hash of the plan; **any edit after that needs approval again**, and the
+  producer refuses paid calls until it has it. Never run `approve.mjs` on your own say-so.
+- `budget.cap_usd` set when there is a spend limit; `budget.frozen: true` stops every paid
+  call the moment quality is in doubt.
 - After render: run `/video-factory:review` (18-frame contact sheet audit, target $\ge 8.0/10$).

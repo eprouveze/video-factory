@@ -90,6 +90,57 @@ quality bar is *fidelity*, not just craft. The `event-recap` template encodes th
   `assets/slides/`) before reaching for generation. Generative b-roll here is **abstract, textless,
   motivated** texture only — never a stand-in for what really happened.
 
+## 10. One explaining graphic per sentence, on its word
+
+Generated pictures are only the plate. Everything that carries meaning (words, numbers,
+interface) is drawn in code on top, so it is exact and lands on time.
+
+- **Every narrated sentence gets a graphic** (`scene.graphics[]`) that shows what the line
+  means. A code card covers the sentence it opens on; every further sentence needs its own.
+  The only exemption is `scene.stillness`, with the reason written down.
+- **It enters ON the word that names it.** `anchor` is a word or phrase from the narration;
+  the compositor reads its real timing. Not "about there": on the word.
+- **Pick the form from the content.** number → `counter` / `bar` / `gauge` / `tally` ·
+  claim or category → `stamp` / `tag` · place or thing → `label` (with its `source`) ·
+  tech or speech → `terminal` / `chat` · correction → `strike` · process → `checklist` /
+  `timeline`.
+- **Vary it.** Never the same kind three times running, and at least six kinds across a
+  video. Real numbers and real sources, never decoration.
+- **Never ask a generator for text.** Briefs for `image` / `clip` stay textless.
+
+## 11. The through-line device
+
+One object the whole video carries, in the same corner of every frame, that changes state as
+the story moves: a counter, a clock, a progress bar, a tag (`through_line`). It starts in the
+first scene and every state moves it on. It is what makes separate scenes read as one piece.
+Design it BEFORE the scenes: if you cannot name the device, the video has no spine yet.
+
+## 12. Cuts sit on a grid, shots are as long as what they hold
+
+- **Narration is the clock; the music bed is the grid.** `scripts/snap-grid.mjs` measures the
+  bed's beats and holds each scene a moment after its last word so the cut lands on the next
+  beat (a downbeat when one is near). Narration is never shortened. A bed with no clear pulse
+  is reported as such and the cuts stay on word boundaries: ask for a bed with a kick.
+- **No shot under one second** outside a declared run (`scene.run`). Length follows content:
+  a simple image can be short, a new place or a line of text needs room, a payoff gets longer.
+- **A still never repeats its move.** Two image scenes in a row use different `shot.motion`.
+- **Build inside the shot instead of cutting.** More than four seconds with nothing new
+  arriving is a flag: add a graphic on the next sentence, do not add a cut.
+
+## 13. Lock the look
+
+- `brand.style_suffix`: one sentence of lens, light, texture and colour words, appended
+  verbatim to every generated brief. Written once, never varied per scene.
+- `brand.look_ref`: one reference frame, used for colour and texture only.
+- Every generated still is scored against `brand.palette` (`scripts/palette-score.mjs`). Under
+  `brand.palette_min_score` it is **remade at the source**, never graded into line. Stills
+  under 800 px or near-duplicates of another shot also fail.
+
+## The audit
+
+`node scripts/validate-manifest.mjs <project>` runs all of the above as gates. Run it after
+every edit; do not show a plan to a person until it passes.
+
 ## The divide (what the Editor scores against)
 | Slop | Incredible |
 |---|---|
@@ -100,3 +151,6 @@ quality bar is *fidelity*, not just craft. The `event-recap` template encodes th
 | Static bottom-thirds | word-level animated, mobile-first |
 | Mismatched color across clips | brand LUT locked |
 | Opens on a logo | first frame is the most interesting moment |
+| Text card, then another text card | one explaining graphic per sentence, on its word |
+| Scenes that could be shuffled | a through-line device that escalates |
+| Cuts on a timer | cuts on the beat, shots as long as what they hold |

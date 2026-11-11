@@ -14,6 +14,11 @@ the same contract and pointing the registry at it. Nothing upstream changes.
   **Never** accept a key as a CLI arg or in the JSON (it would leak into logs/manifests).
 - **Idempotent on `out_path`:** if the requested output already exists and is valid, an
   adapter may return it without re-billing (the orchestrator relies on this for resume).
+- **Cost (optional):** an adapter that knows what the call cost may add `"cost_usd"` to its
+  output; the producer records it in the project's `ledger.jsonl` as real spend. A registry
+  entry may carry `est_usd` (+ `est_unit: "second"` for per-second pricing): a list-price
+  estimate used for the pre-spend estimate and the `budget.cap_usd` check. It is never
+  reported as spend. With a cap set, a paid adapter without `est_usd` is refused.
 - **Determinism aid:** when a request includes a `seed`, pass it through if the vendor supports it.
 
 All paths are absolute or relative to the **project dir** (the folder created by `:new`).

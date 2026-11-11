@@ -6,6 +6,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { Scene } from "./Scene";
+import { ThroughLine } from "./ThroughLine";
 
 const sceneMs = (s: any) =>
   s.duration_ms ?? (s.duration_estimate_s ?? 4) * 1000;
@@ -41,6 +42,14 @@ export const Video = ({ manifest, format }: any) => {
     return fullVol + (duckVol - fullVol) * duck;
   };
 
+  // first frame of every scene, for the through-line device
+  const starts: Record<string, number> = {};
+  let at = 0;
+  for (const s of scenes) {
+    starts[s.id] = at;
+    at += Math.max(1, Math.round((sceneMs(s) / 1000) * fps));
+  }
+
   return (
     <AbsoluteFill>
       {manifest?.music ? (
@@ -56,6 +65,13 @@ export const Video = ({ manifest, format }: any) => {
           );
         })}
       </Series>
+      {manifest?.through_line ? (
+        <ThroughLine
+          device={manifest.through_line}
+          starts={starts}
+          brand={manifest?.brand}
+        />
+      ) : null}
     </AbsoluteFill>
   );
 };
