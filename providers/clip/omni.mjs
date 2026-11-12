@@ -16,6 +16,25 @@ const fail = (m, c = 1) => {
   process.exit(c);
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const REF_FRAME_MIME = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+};
+
+export function clampDuration(value) {
+  const requested = Number(value);
+  return Number.isFinite(requested)
+    ? Math.min(15, Math.max(3, Math.round(requested)))
+    : 8;
+}
+
+export function interactionState(j) {
+  if (j?.status === "completed") return "done";
+  if (j?.error || ["failed", "cancelled"].includes(j?.status)) return "failed";
+  return "pending";
+}
 
 function config() {
   const p = join(ROOT, ".video-factory", "config.json");
@@ -30,24 +49,30 @@ function config() {
 }
 
 export function buildOmniRequest(req, cfg = {}) {
-  const requested = Number(req.duration_s);
-  const dur = Number.isFinite(requested)
-    ? Math.min(15, Math.max(3, Math.round(requested)))
-    : 8;
+  const dur = clampDuration(req.duration_s);
   const input = req.ref_frame
     ? [
         {
           type: "image",
           data: readFileSync(resolve(req.ref_frame)).toString("base64"),
-          mime_type: [".jpg", ".jpeg"].includes(
-            extname(req.ref_frame).toLowerCase(),
-          )
-            ? "image/jpeg"
-            : "image/png",
+          mime_type:
+            REF_FRAME_MIME[extname(req.ref_frame).toLowerCase()] || "image/png",
         },
         { type: "text", text: req.brief },
       ]
     : req.brief;
+  const resolution =
+    cfg.clip?.omni_resolution || cfg.clip?.veo_resolution || "720p";
+  if (!cfg.clip?.omni_resolution && cfg.clip?.veo_resolution)
+    log(
+      "omni clip: clip.veo_resolution is renamed to clip.omni_resolution; using it.",
+    );
+  if (cfg.clip?.veo_model)
+    log("omni clip: clip.veo_model is ignored; use clip.omni_model for Omni.");
+  if (req.aspect && !["9:16", "16:9"].includes(req.aspect))
+    log(
+      `omni clip: aspect ${req.aspect} is unsupported; generating 16:9 and the compositor will crop it.`,
+    );
   return {
     url: `${BASE}/interactions`,
     body: {
@@ -56,7 +81,7 @@ export function buildOmniRequest(req, cfg = {}) {
       response_format: {
         type: "video",
         aspect_ratio: req.aspect === "9:16" ? "9:16" : "16:9",
-        resolution: cfg.clip?.omni_resolution || "720p",
+        resolution,
         duration: `${dur}s`,
         delivery: "uri",
       },
@@ -109,10 +134,23 @@ async function main() {
   }
 
   const { url, body } = buildOmniRequest(req, cfg);
-  const submitted = await call("POST", url, body);
-  const video = findVideo(submitted);
+  let job = await call("POST", url, body);
+  const jobDeadline = Date.now() + 10 * 60 * 1000;
+  while (interactionState(job) === "pending" && !findVideo(job)) {
+    if (!job.id)
+      fail(`no video and no id to poll: ${JSON.stringify(job).slice(0, 400)}`);
+    if (Date.now() >= jobDeadline) fail("timed out after 10min");
+    log(`  …interaction ${job.status || "pending"}`);
+    await sleep(5000);
+    job = await call("GET", `${BASE}/interactions/${job.id}`);
+  }
+  if (interactionState(job) === "failed")
+    fail(
+      `interaction ${job.status}: ${JSON.stringify(job.error ?? job).slice(0, 300)}`,
+    );
+  const video = findVideo(job);
   if (!video)
-    fail(`no video in response: ${JSON.stringify(submitted).slice(0, 400)}`);
+    fail(`no video in response: ${JSON.stringify(job).slice(0, 400)}`);
 
   const out = resolve(req.out_path);
   mkdirSync(dirname(out), { recursive: true });
@@ -137,10 +175,7 @@ async function main() {
     writeFileSync(out, Buffer.from(await vr.arrayBuffer()));
   }
 
-  const requested = Number(req.duration_s);
-  const dur = Number.isFinite(requested)
-    ? Math.min(15, Math.max(3, Math.round(requested)))
-    : 8;
+  const dur = clampDuration(req.duration_s);
   let duration_ms = dur * 1000;
   try {
     const d = execFileSync(

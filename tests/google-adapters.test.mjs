@@ -7,8 +7,10 @@ import { spawnSync } from "node:child_process";
 import { buildImageRequest, findImage } from "../providers/image/gemini.mjs";
 import {
   buildOmniRequest,
+  clampDuration,
   fileIdFromUri,
   findVideo,
+  interactionState,
 } from "../providers/clip/omni.mjs";
 
 test("gemini image builds the documented Interactions request", () => {
@@ -169,4 +171,37 @@ test("registry defaults to omni and veo fails fast without network", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /shut down on 2026-10-22/);
   assert.match(result.stderr, /`omni`/);
+});
+
+test("omni: job state, duration clamp and the old resolution key", () => {
+  assert.equal(interactionState({ status: "completed" }), "done");
+  assert.equal(
+    interactionState({ status: "in_progress", id: "i1" }),
+    "pending",
+  );
+  assert.equal(interactionState({ id: "i1" }), "pending");
+  assert.equal(interactionState({ status: "failed" }), "failed");
+  assert.equal(interactionState({ status: "cancelled" }), "failed");
+  assert.equal(interactionState({ error: { message: "x" } }), "failed");
+  assert.equal(clampDuration(1), 3);
+  assert.equal(clampDuration(40), 15);
+  assert.equal(clampDuration(undefined), 8);
+  assert.equal(clampDuration(6.4), 6);
+  const old = buildOmniRequest(
+    { brief: "b", aspect: "1:1", out_path: "o.mp4" },
+    {
+      clip: {
+        veo_resolution: "1080p",
+        veo_model: "veo-3.1-fast-generate-preview",
+      },
+    },
+  );
+  assert.equal(old.body.response_format.resolution, "1080p");
+  assert.equal(old.body.response_format.aspect_ratio, "16:9");
+  assert.equal(old.body.model, "gemini-omni-1.2-flash");
+  const both = buildOmniRequest(
+    { brief: "b", out_path: "o.mp4" },
+    { clip: { veo_resolution: "1080p", omni_resolution: "4K" } },
+  );
+  assert.equal(both.body.response_format.resolution, "4K");
 });

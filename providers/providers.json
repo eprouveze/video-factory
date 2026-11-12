@@ -84,7 +84,7 @@
           "path": "providers/clip/omni.mjs",
           "tier": "plugin",
           "needs": ["GEMINI_API_KEY"],
-          "note": "Gemini Omni 1.2 Flash (`gemini-omni-1.2-flash`) via the Interactions API. 3–15 s, native audio, 720p default.",
+          "note": "Gemini Omni 1.2 Flash (`gemini-omni-1.2-flash`) via the Interactions API. 3–15 s, native audio, 720p default. Only 9:16 and 16:9 are supported; other aspects are generated 16:9 and cropped by the compositor.",
           "est_usd": 0.07,
           "est_unit": "second",
           "est_source": "https://ai.google.dev/gemini-api/docs/pricing",
