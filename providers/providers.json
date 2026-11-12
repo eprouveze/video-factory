@@ -41,7 +41,7 @@
           "path": "providers/stt/openai-whisper.mjs",
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY (or config image.openai_api_key)"],
-          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS). OpenAI removes whisper-1 on 2027-02-26 and its replacement gpt-transcribe returns no word timestamps, so captions need another word-timing source before then. Kept as the fallback until OpenAI removes whisper-1 on 2027-02-26; the default is now elevenlabs-scribe."
+          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS). OpenAI removes whisper-1 on 2027-02-26 and its replacement gpt-transcribe returns no word timestamps, so captions need another word-timing source before then. No longer the default (elevenlabs-scribe is); select it with stt provider_assignments until its removal. There is no automatic fallback between the two."
         },
         "deepgram": {
           "path": "providers/stt/deepgram.mjs",

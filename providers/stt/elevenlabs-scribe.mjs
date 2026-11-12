@@ -8,7 +8,7 @@
 // Used by: scripts/extract-voice.mjs (forced-align a known quote out of a recording),
 // and the producer's caption recovery when a supplied voiceover has no word_timings.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { dirname, resolve, join } from "node:path";
+import { basename, dirname, resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -25,9 +25,10 @@ export function mapScribe(j) {
         w.type === "word" &&
         typeof w.start === "number" &&
         typeof w.end === "number" &&
-        String(w.text).trim(),
+        typeof w.text === "string" &&
+        w.text.trim(),
     )
-    .map((w) => ({ word: String(w.text).trim(), start: w.start, end: w.end }));
+    .map((w) => ({ word: w.text.trim(), start: w.start, end: w.end }));
   const duration =
     typeof j.audio_duration_secs === "number"
       ? j.audio_duration_secs
@@ -64,7 +65,7 @@ async function main() {
   if (!existsSync(audio)) fail("audio not found: " + audio, 2);
 
   const form = new FormData();
-  form.append("file", new Blob([readFileSync(audio)]), audio.split("/").pop());
+  form.append("file", new Blob([readFileSync(audio)]), basename(audio));
   form.append("model_id", cfg.stt?.scribe_model || "scribe_v3");
   form.append("timestamps_granularity", "word");
   form.append("tag_audio_events", "false");

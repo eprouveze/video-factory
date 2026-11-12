@@ -65,19 +65,22 @@ if (!audio || !existsSync(audio)) {
 }
 
 // transcribe (cache)
-const reg = JSON.parse(
-  readFileSync(join(ROOT, "providers/providers.json"), "utf8"),
-);
-const sttAdapter = join(
-  ROOT,
-  reg.capabilities.stt.adapters[reg.capabilities.stt.default].path,
-);
 const sttPath = join(projDir, "assets", "source", "stt.json");
 if (!existsSync(sttPath)) {
+  const reg = JSON.parse(
+    readFileSync(join(ROOT, "providers/providers.json"), "utf8"),
+  );
+  const entry = reg.capabilities.stt.adapters[reg.capabilities.stt.default];
+  if (!entry) {
+    log(`stt default "${reg.capabilities.stt.default}" has no adapter entry`);
+    process.exit(2);
+  }
+  const sttAdapter = join(ROOT, entry.path);
   log(`transcribing with ${reg.capabilities.stt.default} (word timestamps)…`);
   const r = execFileSync("node", [sttAdapter], {
     input: JSON.stringify({ audio_path: audio, out_path: sttPath }),
     encoding: "utf8",
+    maxBuffer: 1 << 28,
   });
   if (!existsSync(sttPath)) {
     log("stt produced no transcript: " + r.slice(0, 200));
