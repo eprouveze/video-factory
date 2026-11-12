@@ -61,11 +61,8 @@
           "path": "providers/image/gpt-image.mjs",
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY"],
-          "note": "OpenAI gpt-image-2. VERIFIED. Strong prompt adherence + text-in-image. OpenAI removes gpt-image-2 on 2027-02-10; its named replacements are gpt-image-2.6-sunburst and gpt-image-2.6-flare (set image.openai_model to try one; not yet run through this adapter).",
-          "est_usd": 0.211,
-          "est_source": "https://developers.openai.com/api/docs/guides/image-generation",
-          "est_as_of": "2026-11-12",
-          "est_note": "Highest published per-image price (high quality, 1024x1024). The adapter sends no quality, so the real price is between $0.005 (low) and this."
+          "note": "OpenAI gpt-image-2.6-sunburst (OpenAI's named replacement for gpt-image-2, which is removed 2027-02-10). Request and response shape per OpenAI's image guide, read 2026-11-12; not yet run live through this adapter. Set image.openai_model to gpt-image-2.6-flare for the faster model.",
+          "est_note": "No estimate. OpenAI publishes token rates for 2.6 ($30 per 1M image-output tokens, https://developers.openai.com/api/docs/pricing) but no per-image price, and token use differs from gpt-image-2. The adapter reports cost_usd from the response usage."
         },
         "fal-flux": {
           "path": "providers/image/fal-flux.mjs",
