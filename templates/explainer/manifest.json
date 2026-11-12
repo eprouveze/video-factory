@@ -81,7 +81,7 @@
       "captions": "auto",
       "provider_assignments": {
         "tts": "elevenlabs",
-        "clip": "veo"
+        "clip": "omni"
       },
       "graphics": [
         {
