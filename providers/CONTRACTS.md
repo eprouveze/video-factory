@@ -19,6 +19,9 @@ the same contract and pointing the registry at it. Nothing upstream changes.
   entry may carry `est_usd` (+ `est_unit: "second"` for per-second pricing): a list-price
   estimate used for the pre-spend estimate and the `budget.cap_usd` check. It is never
   reported as spend. With a cap set, a paid adapter without `est_usd` is refused.
+  Every `est_usd` carries `est_source` (the provider's own price page) and `est_as_of` (the
+  date it was read); `est_note` says how the figure was derived, or why there is none.
+  A price from a reseller or a guess does not go in `est_usd`.
 - **Determinism aid:** when a request includes a `seed`, pass it through if the vendor supports it.
 
 All paths are absolute or relative to the **project dir** (the folder created by `:new`).
