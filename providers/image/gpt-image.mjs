@@ -33,7 +33,7 @@ if (!key) fail("no OPENAI_API_KEY (env or config image.openai_api_key).", 2);
 const req = JSON.parse(readFileSync(0, "utf8"));
 if (!req.brief || !req.out_path) fail("request needs {brief, out_path}", 2);
 
-const model = cfg.image?.openai_model || "gpt-image-2";
+const model = cfg.image?.openai_model || "gpt-image-2.6-sunburst";
 const size =
   { "16:9": "1536x1024", "9:16": "1024x1536", "1:1": "1024x1024" }[
     req.aspect
@@ -63,4 +63,16 @@ const out = resolve(req.out_path);
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, Buffer.from(b64, "base64"));
 
-process.stdout.write(JSON.stringify({ image_path: out }) + "\n");
+const res = { image_path: out };
+const u = j.usage;
+if (u && Number.isFinite(u.output_tokens)) {
+  const d = u.input_tokens_details ?? {};
+  res.cost_usd = +(
+    ((d.text_tokens ?? u.input_tokens ?? 0) * 5 +
+      (d.image_tokens ?? 0) * 8 +
+      u.output_tokens * 30) /
+    1e6
+  ).toFixed(4);
+  log(`usage: ${JSON.stringify(u)}`);
+}
+process.stdout.write(JSON.stringify(res) + "\n");

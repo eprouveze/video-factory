@@ -25,6 +25,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
 
 - ✅ `image` adapter (Imagen + gpt-image-2, **direct keys** — no fal markup) + reference-frame locking
 - ✅ `clip` adapters — Veo 3.1 fast (direct, Gemini API) ✅; Kling (direct, single-key) ✅ *(needs account credits to produce)*
+- 2026-11-12: default Google adapters moved to Gemini 3.1 Flash Lite Image and Gemini Omni 1.2 Flash; Veo 3.1 Preview shut down 2026-10-22.
 - ✅ `music` + `sfx` adapters (ElevenLabs) + music-bed **ducking** in the compositor
 - ✅ `stt` adapter — OpenAI Whisper (`whisper-1`, **word-level timestamps**) for caption recovery
 - ✅ **Real-voice voiceover** — scene `voiceover:` uses a speaker's ACTUAL voice (not TTS);

@@ -30,7 +30,7 @@
           "path": "providers/stt/openai-whisper.mjs",
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY (or config image.openai_api_key)"],
-          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS)."
+          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS). OpenAI removes whisper-1 on 2027-02-26 and its replacement gpt-transcribe returns no word timestamps, so captions need another word-timing source before then."
         },
         "deepgram": {
           "path": "providers/stt/deepgram.mjs",
@@ -51,18 +51,18 @@
           "path": "providers/image/gemini.mjs",
           "tier": "plugin",
           "needs": ["GEMINI_API_KEY"],
-          "note": "Imagen 4 fast via the Gemini API (direct, reuses the Veo key). VERIFIED.",
-          "est_note": "No estimate. On 2026-11-12 https://ai.google.dev/gemini-api/docs/pricing listed no Imagen model and the API's model list no longer returned imagen-4.0-fast-generate-001. The adapter needs a current model before it can be priced."
+          "note": "Gemini 3.1 Flash Lite Image (`gemini-3.1-flash-lite-image`) via the Gemini Interactions API (direct). 1K output.",
+          "est_usd": 0.0336,
+          "est_source": "https://ai.google.dev/gemini-api/docs/pricing",
+          "est_as_of": "2026-11-12",
+          "est_note": "1K image output: 1,120 tokens at $30.00 per 1M image-output tokens."
         },
         "gpt-image": {
           "path": "providers/image/gpt-image.mjs",
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY"],
-          "note": "OpenAI gpt-image-2. VERIFIED. Strong prompt adherence + text-in-image.",
-          "est_usd": 0.211,
-          "est_source": "https://developers.openai.com/api/docs/guides/image-generation",
-          "est_as_of": "2026-11-12",
-          "est_note": "Highest published per-image price (high quality, 1024x1024). The adapter sends no quality, so the real price is between $0.005 (low) and this. OpenAI's model page marks gpt-image-2 as deprecated."
+          "note": "OpenAI gpt-image-2.6-sunburst (OpenAI's named replacement for gpt-image-2, which is removed 2027-02-10). Request and response shape per OpenAI's image guide, read 2026-11-12; not yet run live through this adapter. Set image.openai_model to gpt-image-2.6-flare for the faster model.",
+          "est_note": "No estimate. OpenAI publishes token rates for 2.6 ($30 per 1M image-output tokens, https://developers.openai.com/api/docs/pricing) but no per-image price, and token use differs from gpt-image-2. The adapter reports cost_usd from the response usage."
         },
         "fal-flux": {
           "path": "providers/image/fal-flux.mjs",
@@ -78,14 +78,24 @@
       }
     },
     "clip": {
-      "default": "veo",
+      "default": "omni",
       "adapters": {
+        "omni": {
+          "path": "providers/clip/omni.mjs",
+          "tier": "plugin",
+          "needs": ["GEMINI_API_KEY"],
+          "note": "Gemini Omni 1.2 Flash (`gemini-omni-1.2-flash`) via the Interactions API. 3–15 s, native audio, 720p default.",
+          "est_usd": 0.07,
+          "est_unit": "second",
+          "est_source": "https://ai.google.dev/gemini-api/docs/pricing",
+          "est_as_of": "2026-11-12",
+          "est_note": "720p video output: 5,792 tokens per second at $12.00 per 1M video-output tokens, approximately $0.07 per second."
+        },
         "veo": {
           "path": "providers/clip/veo.mjs",
           "tier": "plugin",
           "needs": ["GEMINI_API_KEY"],
-          "note": "Veo 3.1 fast via Gemini API (direct). predictLongRunning + poll + download. VERIFIED.",
-          "est_note": "No estimate. On 2026-11-12 https://ai.google.dev/gemini-api/docs/pricing listed no Veo model and the API's model list no longer returned veo-3.1-fast-generate-preview. The adapter needs a current model before it can be priced."
+          "note": "SHUT DOWN 2026-10-22. Veo 3.1 Preview is no longer available; use `omni`."
         },
         "kling": {
           "path": "providers/clip/kling.mjs",
@@ -98,7 +108,7 @@
           "path": "providers/clip/fal-veo.mjs",
           "tier": "plugin",
           "needs": ["FAL_KEY"],
-          "note": "Veo 3.1 Fast, native audio, native 9:16."
+          "note": "No adapter file yet. fal lists fal-ai/veo3.1/fast for removal on 2026-11-17 (https://fal.ai/models/fal-ai/veo3.1/fast, read 2026-11-12)."
         },
         "fal-kling": {
           "path": "providers/clip/fal-kling.mjs",

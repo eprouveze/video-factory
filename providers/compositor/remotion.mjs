@@ -32,7 +32,7 @@ async function main() {
   const format = req.format || manifest.format?.[0] || "16:9";
   // resolution: scale the composition. scale 2 on 1920x1080 → 3840x2160 (4K).
   // (Code/text stays crisp; generated b-roll is capped by its source res — set
-  //  clip.veo_resolution to "1080p" for sharper 4K upscales.)
+  //  clip.omni_resolution to "1080p" for sharper 4K upscales.)
   const scale =
     req.scale || (/4k|2160/i.test(String(req.resolution || "")) ? 2 : 1);
 
