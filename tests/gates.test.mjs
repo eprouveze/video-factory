@@ -3,7 +3,7 @@
 // run: npm test   (node --test tests/*.test.mjs)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { writeFileSync, mkdtempSync } from "node:fs";
+import { writeFileSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { validate } from "../scripts/validate-manifest.mjs";
@@ -433,4 +433,19 @@ test("look gate: low palette score, small plate and near-duplicate all fail", ()
   assert.ok(gatesOf(d).includes("look"));
   d.scenes[1]._look.ahash = "0000ffff0000ffff";
   assert.ok(!gatesOf(d).includes("look"));
+});
+
+test("registry: every list-price estimate names its source and the date it was read", () => {
+  const reg = JSON.parse(
+    readFileSync(new URL("../providers/providers.json", import.meta.url), "utf8"),
+  );
+  for (const [cap, c] of Object.entries(reg.capabilities))
+    for (const [name, a] of Object.entries(c.adapters)) {
+      if (a.est_usd === undefined) continue;
+      const id = `${cap}:${name}`;
+      assert.ok(typeof a.est_usd === "number" && a.est_usd >= 0, id);
+      assert.match(a.est_source ?? "", /^https:\/\//, id);
+      assert.match(a.est_as_of ?? "", /^\d{4}-\d{2}-\d{2}$/, id);
+      assert.ok([undefined, "second"].includes(a.est_unit), id);
+    }
 });

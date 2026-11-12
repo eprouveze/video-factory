@@ -8,7 +8,12 @@
         "elevenlabs": {
           "path": "providers/tts/elevenlabs.mjs",
           "tier": "plugin",
-          "needs": ["ELEVENLABS_API_KEY"]
+          "needs": ["ELEVENLABS_API_KEY"],
+          "est_usd": 0.0006,
+          "est_unit": "second",
+          "est_source": "https://elevenlabs.io/pricing/api",
+          "est_as_of": "2026-11-12",
+          "est_note": "Flash / Turbo row: $0.04 per 1K characters. Billed per character; converted at 15 characters per second of speech (an assumption, about 150 words a minute)."
         },
         "say": {
           "path": "providers/tts/say.sh",
@@ -46,13 +51,18 @@
           "path": "providers/image/gemini.mjs",
           "tier": "plugin",
           "needs": ["GEMINI_API_KEY"],
-          "note": "Imagen 4 fast via the Gemini API (direct, reuses the Veo key). VERIFIED."
+          "note": "Imagen 4 fast via the Gemini API (direct, reuses the Veo key). VERIFIED.",
+          "est_note": "No estimate. On 2026-11-12 https://ai.google.dev/gemini-api/docs/pricing listed no Imagen model and the API's model list no longer returned imagen-4.0-fast-generate-001. The adapter needs a current model before it can be priced."
         },
         "gpt-image": {
           "path": "providers/image/gpt-image.mjs",
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY"],
-          "note": "OpenAI gpt-image-2. VERIFIED. Strong prompt adherence + text-in-image."
+          "note": "OpenAI gpt-image-2. VERIFIED. Strong prompt adherence + text-in-image.",
+          "est_usd": 0.211,
+          "est_source": "https://developers.openai.com/api/docs/guides/image-generation",
+          "est_as_of": "2026-11-12",
+          "est_note": "Highest published per-image price (high quality, 1024x1024). The adapter sends no quality, so the real price is between $0.005 (low) and this. OpenAI's model page marks gpt-image-2 as deprecated."
         },
         "fal-flux": {
           "path": "providers/image/fal-flux.mjs",
@@ -74,13 +84,15 @@
           "path": "providers/clip/veo.mjs",
           "tier": "plugin",
           "needs": ["GEMINI_API_KEY"],
-          "note": "Veo 3.1 fast via Gemini API (direct). predictLongRunning + poll + download. VERIFIED."
+          "note": "Veo 3.1 fast via Gemini API (direct). predictLongRunning + poll + download. VERIFIED.",
+          "est_note": "No estimate. On 2026-11-12 https://ai.google.dev/gemini-api/docs/pricing listed no Veo model and the API's model list no longer returned veo-3.1-fast-generate-preview. The adapter needs a current model before it can be priced."
         },
         "kling": {
           "path": "providers/clip/kling.mjs",
           "tier": "plugin",
           "needs": ["clip.kling_api_key"],
-          "note": "Kling official single-key API (direct). Auth+submit+error VERIFIED; needs account credits to produce."
+          "note": "Kling official single-key API (direct). Auth+submit+error VERIFIED; needs account credits to produce.",
+          "est_note": "No estimate. https://kling.ai/dev/pricing showed no figures on 2026-11-12; resellers quote $0.21 per 5 s clip for kling-v2-6 std, which is not Kling's own list price."
         },
         "fal-veo": {
           "path": "providers/clip/fal-veo.mjs",
@@ -102,7 +114,12 @@
         "elevenlabs-music": {
           "path": "providers/music/elevenlabs.mjs",
           "tier": "plugin",
-          "needs": ["ELEVENLABS_API_KEY"]
+          "needs": ["ELEVENLABS_API_KEY"],
+          "est_usd": 0.0025,
+          "est_unit": "second",
+          "est_source": "https://elevenlabs.io/pricing/api",
+          "est_as_of": "2026-11-12",
+          "est_note": "Music: $0.15 per minute."
         }
       }
     },
@@ -112,7 +129,11 @@
         "elevenlabs-sfx": {
           "path": "providers/sfx/elevenlabs.mjs",
           "tier": "plugin",
-          "needs": ["ELEVENLABS_API_KEY"]
+          "needs": ["ELEVENLABS_API_KEY"],
+          "est_usd": 0.044,
+          "est_source": "https://elevenlabs.io/pricing/api",
+          "est_as_of": "2026-11-12",
+          "est_note": "Sound effects: $0.12 per minute. Per call at the adapter's 22 s maximum, so an upper bound for one effect."
         },
         "freesound": {
           "path": "providers/sfx/freesound.mjs",
