@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // extract-voice — pull clean spoken QUOTES out of a real recording, for use as a scene's
 // real-voice voiceover (instead of TTS). This is how you put a speaker's ACTUAL voice on the
-// apex lines of a recap: forced-alignment via Whisper word timestamps, then a normalized cut.
+// apex lines of a recap: forced-alignment via the registry's stt word timestamps, then a normalized cut.
 //
 // usage:
 //   node scripts/extract-voice.mjs <project-dir> '<phrase 1>' '<phrase 2>' ...
@@ -65,19 +65,22 @@ if (!audio || !existsSync(audio)) {
 }
 
 // transcribe (cache)
+const reg = JSON.parse(
+  readFileSync(join(ROOT, "providers/providers.json"), "utf8"),
+);
+const sttAdapter = join(
+  ROOT,
+  reg.capabilities.stt.adapters[reg.capabilities.stt.default].path,
+);
 const sttPath = join(projDir, "assets", "source", "stt.json");
 if (!existsSync(sttPath)) {
-  log("transcribing with whisper (word timestamps)…");
-  const r = execFileSync(
-    "node",
-    [join(ROOT, "providers/stt/openai-whisper.mjs")],
-    {
-      input: JSON.stringify({ audio_path: audio, out_path: sttPath }),
-      encoding: "utf8",
-    },
-  );
+  log(`transcribing with ${reg.capabilities.stt.default} (word timestamps)…`);
+  const r = execFileSync("node", [sttAdapter], {
+    input: JSON.stringify({ audio_path: audio, out_path: sttPath }),
+    encoding: "utf8",
+  });
   if (!existsSync(sttPath)) {
-    log("whisper produced no transcript: " + r.slice(0, 200));
+    log("stt produced no transcript: " + r.slice(0, 200));
     process.exit(1);
   }
 }

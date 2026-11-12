@@ -24,13 +24,24 @@
       }
     },
     "stt": {
-      "default": "openai-whisper",
+      "default": "elevenlabs-scribe",
       "adapters": {
+        "elevenlabs-scribe": {
+          "path": "providers/stt/elevenlabs-scribe.mjs",
+          "tier": "plugin",
+          "needs": ["ELEVENLABS_API_KEY (or config ELEVENLABS_API_KEY)"],
+          "note": "ElevenLabs Scribe (default model scribe_v3, override with config stt.scribe_model) with WORD-level timestamps; spacing and audio-event tokens are dropped. Replaces openai-whisper as the word-timing source for caption recovery and scripts/extract-voice.mjs.",
+          "est_usd": 0.0000556,
+          "est_unit": "second",
+          "est_source": "https://elevenlabs.io/pricing/api",
+          "est_as_of": "2026-11-12",
+          "est_note": "Speech to Text API (Scribe v3, Scribe v2, Scribe v2 Medical): $0.20 per hour of audio, converted to per second (0.20 / 3600). Excludes the optional keyterm prompting and transcript editing surcharges."
+        },
         "openai-whisper": {
           "path": "providers/stt/openai-whisper.mjs",
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY (or config image.openai_api_key)"],
-          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS). OpenAI removes whisper-1 on 2027-02-26 and its replacement gpt-transcribe returns no word timestamps, so captions need another word-timing source before then."
+          "note": "Whisper-1 with WORD-level timestamps. VERIFIED. Powers caption recovery + scripts/extract-voice.mjs (forced-align a real recording so a speaker's actual voice can voice a scene instead of TTS). OpenAI removes whisper-1 on 2027-02-26 and its replacement gpt-transcribe returns no word timestamps, so captions need another word-timing source before then. Kept as the fallback until OpenAI removes whisper-1 on 2027-02-26; the default is now elevenlabs-scribe."
         },
         "deepgram": {
           "path": "providers/stt/deepgram.mjs",
