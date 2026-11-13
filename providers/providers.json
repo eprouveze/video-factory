@@ -105,6 +105,17 @@
           "est_as_of": "2026-11-12",
           "est_note": "720p video output: 5,792 tokens per second at $12.00 per 1M video-output tokens, approximately $0.07 per second."
         },
+        "minimax": {
+          "path": "providers/clip/minimax.mjs",
+          "tier": "plugin",
+          "needs": ["MINIMAX_API_KEY"],
+          "note": "MiniMax H3 (`MiniMax-H3`) via the v2 video generation API on api.minimax.io. 4–15 s, 768P default; first-frame image supported.",
+          "est_usd": 0.08,
+          "est_unit": "second",
+          "est_source": "https://platform.minimax.io/docs/guides/pricing",
+          "est_as_of": "2026-11-13",
+          "est_note": "MiniMax-H3 at 768P output: $0.08 per second ($0.13 at 2K). Other variants: Highspeed $0.06 (768P) / $0.04 (480P), Lite $0.04 (768P) / $0.025 (480P), Max $0.08 (768P) / $0.05 (480P)."
+        },
         "veo": {
           "path": "providers/clip/veo.mjs",
           "tier": "plugin",
