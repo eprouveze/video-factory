@@ -205,3 +205,18 @@ test("omni: job state, duration clamp and the old resolution key", () => {
   );
   assert.equal(both.body.response_format.resolution, "4K");
 });
+
+test("gemini image sends refs as image blocks after the text and refuses a missing one", () => {
+  const dir = mkdtempSync(join(tmpdir(), "vf-refs-"));
+  const ref = join(dir, "face.png");
+  writeFileSync(ref, Buffer.from("fakepng"));
+  const { body, refs_used } = buildImageRequest({ brief: "same person, profile", refs: [ref] });
+  assert.equal(refs_used, 1);
+  assert.deepEqual(body.input, [
+    { type: "text", text: "same person, profile" },
+    { type: "image", mime_type: "image/png", data: Buffer.from("fakepng").toString("base64") },
+  ]);
+  assert.throws(() => buildImageRequest({ brief: "x", refs: [join(dir, "nope.png")] }), /not found/);
+  assert.throws(() => buildImageRequest({ brief: "x", refs: [join(dir, "a.gif")] }), /png, .jpg or .webp/);
+  assert.equal(buildImageRequest({ brief: "x" }).refs_used, 0);
+});

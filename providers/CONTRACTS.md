@@ -55,8 +55,14 @@ All paths are absolute or relative to the **project dir** (the folder created by
 { "brief": "neurons firing across a dark synaptic gap, cinematic, shallow depth of field",
   "aspect": "16:9", "refs": ["clips/s2-frame.png"], "seed": 42, "out_path": "assets/s3.png" }
 // out
-{ "image_path": "assets/s3.png" }
+{ "image_path": "assets/s3.png", "refs_used": 1 }
 ```
+`refs` are image files (.png, .jpg, .webp) sent to the provider as pixels, in order. An
+adapter that accepts them declares `"refs": true` in `providers.json` and returns
+`refs_used`; a missing file or a count mismatch is an error, never a silent skip. The
+producer builds `refs` from the scene's `continuity_refs` (same character and setting),
+then `brand.look_ref` (colour and texture only), and appends a sentence to the brief saying
+which is which.
 
 ### `clip` — brief → generative video
 ```jsonc

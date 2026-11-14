@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 // image adapter — Gemini native image generation via Interactions API. Contract: providers/CONTRACTS.md (image).
-// stdin  {brief, aspect?, seed?, out_path}
-// stdout {image_path}
+// stdin  {brief, aspect?, refs?, seed?, out_path}
+// stdout {image_path, refs_used}
+// refs are sent as image content blocks after the text, as the Interactions API documents.
 // Key from env GEMINI_API_KEY or config GEMINI_API_KEY (x-goog-api-key) — never args.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname, resolve, join } from "node:path";
+import { dirname, extname, resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const BASE = "https://generativelanguage.googleapis.com/v1beta/interactions";
+export const MAX_REFS = 14; // Google: up to 14 reference images
+const REF_MIME = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+};
 const log = (...a) => process.stderr.write(a.join(" ") + "\n");
 const fail = (m, c = 1) => {
   log("gemini image: " + m);
@@ -27,12 +35,29 @@ function config() {
   return {};
 }
 
+// Reads every reference from disk. Throws on a missing or unsupported file: a reference
+// that silently does not reach the provider is worse than a failed call.
+export function loadRefs(refs) {
+  const list = (refs || []).filter(Boolean);
+  if (list.length > MAX_REFS)
+    throw new Error(`${list.length} refs given; the provider accepts ${MAX_REFS}`);
+  return list.map((p) => {
+    const path = resolve(p);
+    const mime = REF_MIME[extname(path).toLowerCase()];
+    if (!mime) throw new Error(`ref ${p}: use .png, .jpg or .webp`);
+    if (!existsSync(path)) throw new Error(`ref ${p}: file not found`);
+    return { type: "image", mime_type: mime, data: readFileSync(path).toString("base64") };
+  });
+}
+
 export function buildImageRequest(req, cfg = {}) {
+  const refs = loadRefs(req.refs);
   return {
     url: BASE,
+    refs_used: refs.length,
     body: {
       model: cfg.image?.model || "gemini-3.1-flash-lite-image",
-      input: req.brief,
+      input: refs.length ? [{ type: "text", text: req.brief }, ...refs] : req.brief,
       response_format: {
         type: "image",
         aspect_ratio: req.aspect || "16:9",
@@ -60,7 +85,14 @@ async function main() {
   const req = JSON.parse(readFileSync(0, "utf8"));
   if (!req.brief || !req.out_path) fail("request needs {brief, out_path}", 2);
 
-  const { url, body } = buildImageRequest(req, cfg);
+  let built;
+  try {
+    built = buildImageRequest(req, cfg);
+  } catch (e) {
+    fail(e.message, 2);
+  }
+  const { url, body, refs_used } = built;
+  if (refs_used) log(`sending ${refs_used} reference image(s)`);
   const r = await fetch(url, {
     method: "POST",
     headers: {
@@ -86,7 +118,7 @@ async function main() {
   const out = resolve(req.out_path);
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, Buffer.from(data, "base64"));
-  process.stdout.write(JSON.stringify({ image_path: out }) + "\n");
+  process.stdout.write(JSON.stringify({ image_path: out, refs_used }) + "\n");
 }
 
 if (

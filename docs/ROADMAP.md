@@ -49,7 +49,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
 - ⬜ `est_usd` prices in `providers.json` (left empty: fill from each provider's current price
   list; a cap cannot be enforced over an unpriced adapter)
 - ⬜ Graphics + through-line in the HyperFrames compositor (Remotion only today)
-- ⬜ `look_ref` honoured by the image adapters (passed as `refs`; adapters ignore it today)
+- ✅ `look_ref` and scene `continuity_refs` sent to the image adapters as real reference images
+  (`refs`; gpt-image via the edits endpoint, Gemini as image input). Not yet run live.
 
 ## Phase 0.3 — Avatar + reframe
 **Goal:** your-own-avatar talking head where wanted; clean multi-aspect.

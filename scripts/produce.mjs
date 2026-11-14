@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { estimateCost, isApproved } from "./lib/manifest-lib.mjs";
+import { estimateCost, imageRefs, isApproved } from "./lib/manifest-lib.mjs";
 import { validate } from "./validate-manifest.mjs";
 import { makeSpend, SpendRefused } from "./lib/spend.mjs";
 import { lookOf } from "./palette-score.mjs";
@@ -103,8 +103,21 @@ process.on("uncaughtException", (e) => {
   process.exit(1);
 });
 const styleSuffix = manifest.brand?.style_suffix ? ` ${manifest.brand.style_suffix.trim()}` : "";
-const lookRefs = manifest.brand?.look_ref ? [join(projDir, manifest.brand.look_ref)] : undefined;
 const save = () => writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+// Reference images must reach the provider or the run stops: refuse before spending when
+// the adapter does not declare `refs`, and after the call when it reports a different count.
+const refsGuard = (iprov, refs, sceneId) => {
+  if (refs?.length && !reg.capabilities.image.adapters[iprov]?.refs)
+    throw new Error(
+      `${sceneId}: image adapter "${iprov}" does not accept reference images, and this scene has ${refs.length}. Pick an adapter with "refs": true or remove the references.`,
+    );
+};
+const refsSent = (ir, refs, sceneId) => {
+  if (refs?.length && ir.refs_used !== refs.length)
+    throw new Error(
+      `${sceneId}: ${refs.length} reference image(s) requested, adapter reports ${ir.refs_used ?? 0} sent.`,
+    );
+};
 const lookCheck = (s, rel) => {
   try {
     s._look = lookOf(join(projDir, rel), manifest.brand?.palette);
@@ -255,19 +268,22 @@ for (let i = 0; i < scenes.length; i++) {
     if (!refFrame && lock) {
       const iprov =
         s.provider_assignments?.image || reg.capabilities.image.default;
+      const fr = imageRefs(s, manifest.brand, projDir, { continuity: false });
+      refsGuard(iprov, fr.refs, s.id);
       const ir = spend("image", iprov, { scene: s.id }, () =>
         JSON.parse(
           execFileSync("node", [adapterPath("image", iprov)], {
             input: JSON.stringify({
-              brief,
+              brief: brief + fr.note,
               aspect,
-              refs: lookRefs,
+              refs: fr.refs,
               out_path: join(projDir, "frames", `${s.id}.png`),
             }),
             encoding: "utf8",
           }),
         ),
       );
+      refsSent(ir, fr.refs, s.id);
       refFrame = ir.image_path;
       lookCheck(s, `frames/${s.id}.png`);
       process.stderr.write(`  ${s.id}: ref-frame via ${iprov}\n`);
@@ -309,19 +325,23 @@ for (let i = 0; i < scenes.length; i++) {
     let iprov = s.provider_assignments?.image || reg.capabilities.image.default;
     if (textHeavy && reg.capabilities.image.adapters["gpt-image"])
       iprov = "gpt-image";
+    const sr = imageRefs(s, manifest.brand, projDir);
+    refsGuard(iprov, sr.refs, s.id);
     const ir = spend("image", iprov, { scene: s.id }, () =>
       JSON.parse(
         execFileSync("node", [adapterPath("image", iprov)], {
           input: JSON.stringify({
-            brief,
+            brief: brief + sr.note,
             aspect: manifest.format?.[0] || "16:9",
-            refs: lookRefs,
+            refs: sr.refs,
             out_path: join(projDir, "assets", `${s.id}.png`),
           }),
           encoding: "utf8",
         }),
       ),
     );
+    refsSent(ir, sr.refs, s.id);
+    if (sr.refs) s.visual._refs_used = sr.refs.length;
     s.visual.asset = `assets/${s.id}.png`;
     s.visual._generated = true;
     lookCheck(s, s.visual.asset);
