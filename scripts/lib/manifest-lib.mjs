@@ -60,6 +60,29 @@ const stable = (v) =>
           .join(",")}}`
       : JSON.stringify(v ?? null);
 
+// Reference images for one generated still, and the sentence that tells the model what
+// each one is for. Scene continuity_refs come first (same character and setting), then
+// brand.look_ref (colour and texture only). The sentence is appended to the brief because
+// an attached image with no stated role gets copied wholesale or ignored.
+export function imageRefs(scene, brand, projDir, { continuity = true } = {}) {
+  const abs = (p) => (projDir ? `${projDir}/${p}`.replace(/\/{2,}/g, "/") : p);
+  const cont = continuity ? (scene?.continuity_refs ?? []).filter(Boolean) : [];
+  const look = brand?.look_ref ? [brand.look_ref] : [];
+  const refs = [...cont, ...look].map(abs);
+  const parts = [];
+  if (cont.length)
+    parts.push(
+      cont.length === 1
+        ? "Reference image 1 shows the established character and setting: keep the same face, hair, clothing and set design."
+        : `Reference images 1 to ${cont.length} show the established character and setting: keep the same face, hair, clothing and set design.`,
+    );
+  if (look.length)
+    parts.push(
+      `Reference image ${cont.length + 1} is a colour and texture reference only: match its palette and grain, do not copy its content.`,
+    );
+  return { refs: refs.length ? refs : undefined, note: parts.length ? ` ${parts.join(" ")}` : "" };
+}
+
 export const approvalHash = (manifest) =>
   createHash("sha256")
     .update(stable(creativeView(manifest)))

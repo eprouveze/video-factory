@@ -60,6 +60,7 @@
       "adapters": {
         "gemini-imagen": {
           "path": "providers/image/gemini.mjs",
+          "refs": true,
           "tier": "plugin",
           "needs": ["GEMINI_API_KEY"],
           "note": "Gemini 3.1 Flash Lite Image (`gemini-3.1-flash-lite-image`) via the Gemini Interactions API (direct). 1K output.",
@@ -70,6 +71,7 @@
         },
         "gpt-image": {
           "path": "providers/image/gpt-image.mjs",
+          "refs": true,
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY"],
           "note": "OpenAI gpt-image-2.6-sunburst (OpenAI's named replacement for gpt-image-2, which is removed 2027-02-10). VERIFIED 2026-11-12: one live 1536x1024 image, text rendered correctly. Set image.openai_model to gpt-image-2.6-flare for the faster model.",
