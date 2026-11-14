@@ -64,6 +64,8 @@ export function buildMinimaxRequest(req, cfg = {}) {
   const model = cfg.clip?.minimax_model || "MiniMax-H3";
   const content = [{ type: "text", text: req.brief }];
   if (req.ref_frame) {
+    if (!existsSync(resolve(req.ref_frame)))
+      throw new Error(`ref_frame not found: ${req.ref_frame}`);
     const mime =
       REF_FRAME_MIME[extname(req.ref_frame).toLowerCase()] || "image/png";
     const data = readFileSync(resolve(req.ref_frame)).toString("base64");
@@ -139,6 +141,7 @@ async function main() {
       method,
       headers,
       body: payload ? JSON.stringify(payload) : undefined,
+      signal: AbortSignal.timeout(60000),
     });
     const t = await r.text();
     let j;
@@ -149,6 +152,9 @@ async function main() {
     }
     if (!r.ok)
       fail(`${method} ${url} ${r.status}: ${JSON.stringify(j).slice(0, 300)}`);
+    const br = j?.base_resp;
+    if (br && Number(br.status_code) !== 0)
+      fail(`${method} ${url} api error ${br.status_code}: ${br.status_msg}`);
     return j;
   }
 
@@ -158,6 +164,9 @@ async function main() {
   if (!taskId)
     fail(`no task_id in response: ${JSON.stringify(created).slice(0, 400)}`);
 
+  log(
+    `  task_id ${taskId} (billed once created; poll GET ${queryUrl(taskId)} to recover)`,
+  );
   const deadline = Date.now() + 10 * 60 * 1000;
   let task = null;
   while (true) {
@@ -175,9 +184,12 @@ async function main() {
 
   const out = resolve(req.out_path);
   mkdirSync(dirname(out), { recursive: true });
-  const vr = await fetch(videoUrl);
-  if (!vr.ok) fail(`download ${vr.status}`);
-  writeFileSync(out, Buffer.from(await vr.arrayBuffer()));
+  const vr = await fetch(videoUrl, { signal: AbortSignal.timeout(180000) });
+  if (!vr.ok) fail(`download ${vr.status} (task_id ${taskId})`);
+  const bytes = Buffer.from(await vr.arrayBuffer());
+  if (bytes.length < 1000)
+    fail(`download too small (${bytes.length} bytes, task_id ${taskId})`);
+  writeFileSync(out, bytes);
 
   let duration_ms = clampDuration(req.duration_s, body.model) * 1000;
   try {
@@ -194,7 +206,8 @@ async function main() {
       ],
       { encoding: "utf8" },
     ).trim();
-    duration_ms = Math.round(parseFloat(d) * 1000);
+    const ms = Math.round(parseFloat(d) * 1000);
+    if (Number.isFinite(ms)) duration_ms = ms;
   } catch {}
 
   const result = { clip_path: out, duration_ms };
