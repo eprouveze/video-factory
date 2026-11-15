@@ -37,6 +37,7 @@ async function main() {
     req.scale || (/4k|2160/i.test(String(req.resolution || "")) ? 2 : 1);
 
   stage(projDir, manifest.music); // top-level music bed
+  stage(projDir, manifest.audio_master_path); // music-first master audio
   for (const s of manifest.scenes ?? []) {
     stage(projDir, s._audio);
     stage(projDir, s.visual?.asset);
@@ -65,7 +66,10 @@ async function main() {
 
   const inputProps = { manifest, format };
   // optional: render with an already-installed Chromium instead of downloading one
-  const browserExecutable = process.env.REMOTION_BROWSER_EXECUTABLE || undefined;
+  const defaultMacChrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  const browserExecutable =
+    process.env.REMOTION_BROWSER_EXECUTABLE ||
+    (existsSync(defaultMacChrome) ? defaultMacChrome : undefined);
   const composition = await selectComposition({
     serveUrl,
     id: "Video",
@@ -83,6 +87,7 @@ async function main() {
     outputLocation: out,
     inputProps,
     browserExecutable,
+    ...(req.concurrency ? { concurrency: req.concurrency } : {}),
   });
 
   const duration_ms = Math.round(

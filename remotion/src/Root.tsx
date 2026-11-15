@@ -9,7 +9,26 @@ const DIMS: Record<string, [number, number]> = {
 };
 
 const sceneMs = (s: any) =>
-  s.duration_ms ?? (s.duration_estimate_s ?? 4) * 1000;
+  s.duration_ms ??
+  (s.in_ms != null && s.out_ms != null ? s.out_ms - s.in_ms : (s.duration_estimate_s ?? 4) * 1000);
+
+const totalFramesFor = (m: any, fps: number) => {
+  const scenes = m?.scenes ?? [];
+  if (m?.mode === "music" && m?.audio_master_duration_ms) {
+    return Math.max(1, Math.round((m.audio_master_duration_ms / 1000) * fps));
+  }
+  let acc = 0;
+  for (const s of scenes) {
+    if (s.in_ms != null && s.out_ms != null) {
+      const startF = Math.round((s.in_ms / 1000) * fps);
+      const endF = Math.max(startF + 1, Math.round((s.out_ms / 1000) * fps));
+      acc = endF;
+    } else {
+      acc += Math.max(1, Math.round((sceneMs(s) / 1000) * fps));
+    }
+  }
+  return Math.max(1, acc);
+};
 
 export const RemotionRoot = () => {
   return (
@@ -25,12 +44,8 @@ export const RemotionRoot = () => {
         const m = props.manifest;
         const fps = m?.fps ?? 30;
         const [width, height] = DIMS[props.format] ?? DIMS["16:9"];
-        const totalFrames = (m?.scenes ?? []).reduce(
-          (a: number, s: any) => a + Math.max(1, Math.round((sceneMs(s) / 1000) * fps)),
-          0,
-        );
         return {
-          durationInFrames: Math.max(1, totalFrames),
+          durationInFrames: totalFramesFor(m, fps),
           fps,
           width,
           height,

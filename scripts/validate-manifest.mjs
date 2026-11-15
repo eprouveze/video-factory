@@ -71,14 +71,65 @@ export function validate(manifest, { registry, requireApproval = false } = {}) {
     warnings.push({ gate, scene, message });
 
   const scenes = manifest.scenes ?? [];
+  const isMusic = manifest.mode === "music";
   const rules = {
-    min_shot_ms: 1000,
+    min_shot_ms: isMusic ? 400 : 1000,
     max_static_ms: 4000,
     min_graphic_kinds: 6,
-    through_line: true,
-    graphic_per_sentence: true,
+    through_line: !isMusic,
+    graphic_per_sentence: !isMusic,
     ...(manifest.rules ?? {}),
   };
+
+  // ── music-mode spine ───────────────────────────────────────────────────────────────
+  if (isMusic) {
+    if (!manifest.audio_master_path && !manifest.music) {
+      err("music", null, "music mode requires audio_master_path (or music)");
+    }
+    const masterMs = manifest.audio_master_duration_ms;
+    if (!Number.isFinite(masterMs) || masterMs <= 0) {
+      err("music", null, "music mode requires measured audio_master_duration_ms > 0");
+    }
+    if (!scenes.length) {
+      err("music", null, "music mode requires at least one scene/shot");
+    } else {
+      let cursor = 0;
+      for (let i = 0; i < scenes.length; i++) {
+        const s = scenes[i];
+        if (s.in_ms == null || s.out_ms == null) {
+          err("music", s.id, "music-mode shot requires integer in_ms and out_ms");
+          continue;
+        }
+        if (s.out_ms <= s.in_ms) {
+          err("music", s.id, `out_ms (${s.out_ms}) must be > in_ms (${s.in_ms})`);
+        }
+        if (i === 0 && s.in_ms !== 0) {
+          err("music", s.id, `first shot must start at in_ms=0 (got ${s.in_ms})`);
+        } else if (i > 0 && s.in_ms !== cursor) {
+          err("music", s.id, `shot in_ms (${s.in_ms}) does not match prior out_ms (${cursor}); gaps/overlaps are forbidden`);
+        }
+        cursor = s.out_ms;
+        if (s.tts_script && String(s.tts_script).trim()) {
+          err("music", s.id, "music mode forbids synthetic tts_script narration");
+        }
+        const v = s.visual ?? {};
+        if (v.source === "placeholder") {
+          if (!s.tech_test_placeholder) {
+            err("music", s.id, "placeholder visual requires tech_test_placeholder: true (internal QA only)");
+          } else {
+            warn("music", s.id, "uses tech_test_placeholder (internal QA only, never ship)");
+          }
+        } else if ((v.source === "image" || v.source === "clip") && !v.asset) {
+          err("music", s.id, `missing visual.asset for ${v.source} shot (title-card substitution is forbidden in music mode)`);
+        } else if (v.source === "code" && !s.tech_test_placeholder) {
+          err("music", s.id, "silent title-card substitution (visual.source='code') is forbidden in music mode unless marked tech_test_placeholder");
+        }
+      }
+      if (Number.isFinite(masterMs) && cursor !== masterMs) {
+        err("music", null, `shots end at ${cursor} ms but audio_master_duration_ms is ${masterMs} ms`);
+      }
+    }
+  }
 
   // ── ids ────────────────────────────────────────────────────────────────────────────
   const seen = new Set();
@@ -98,28 +149,30 @@ export function validate(manifest, { registry, requireApproval = false } = {}) {
 
   // ── hook ───────────────────────────────────────────────────────────────────────────
   const first = scenes[0];
-  if (!manifest.hook?.text) err("hook", null, "hook.text is missing");
-  else if (tokens(manifest.hook.text).length > 12)
-    err(
-      "hook",
-      null,
-      `hook.text is ${tokens(manifest.hook.text).length} words; keep it to 12 so it reads in a second`,
-    );
-  if (first) {
-    const v = first.visual ?? {};
-    const p = v.props ?? {};
-    const cardText =
-      v.source === "code" && (p.headline || p.value || p.eyebrow || p.quote);
-    const overlay = !!v.overlay;
-    const earlyGraphic = (first.graphics ?? []).some(
-      (g) => anchorMs(first, g) <= 1000,
-    );
-    if (!cardText && !overlay && !earlyGraphic)
+  if (!isMusic) {
+    if (!manifest.hook?.text) err("hook", null, "hook.text is missing");
+    else if (tokens(manifest.hook.text).length > 12)
       err(
         "hook",
-        first.id,
-        "nothing readable is on screen by 1.0 s: give the first scene explicit card copy (props.headline/value), an overlay, or a graphic anchored in its first second",
+        null,
+        `hook.text is ${tokens(manifest.hook.text).length} words; keep it to 12 so it reads in a second`,
       );
+    if (first) {
+      const v = first.visual ?? {};
+      const p = v.props ?? {};
+      const cardText =
+        v.source === "code" && (p.headline || p.value || p.eyebrow || p.quote);
+      const overlay = !!v.overlay;
+      const earlyGraphic = (first.graphics ?? []).some(
+        (g) => anchorMs(first, g) <= 1000,
+      );
+      if (!cardText && !overlay && !earlyGraphic)
+        err(
+          "hook",
+          first.id,
+          "nothing readable is on screen by 1.0 s: give the first scene explicit card copy (props.headline/value), an overlay, or a graphic anchored in its first second",
+        );
+    }
   }
 
   // ── graphics: one explaining graphic per narrated sentence, entering on a spoken word ──
