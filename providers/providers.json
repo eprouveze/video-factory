@@ -118,6 +118,17 @@
           "est_as_of": "2026-11-13",
           "est_note": "MiniMax-H3 at 768P output: $0.08 per second ($0.13 at 2K). Other variants: Highspeed $0.06 (768P) / $0.04 (480P), Lite $0.04 (768P) / $0.025 (480P), Max $0.08 (768P) / $0.05 (480P)."
         },
+        "openrouter": {
+          "path": "providers/clip/openrouter.mjs",
+          "tier": "plugin",
+          "needs": ["OPENROUTER_API_KEY"],
+          "note": "OpenRouter async Video Generation API (`alibaba/wan-2.7` default via `atlas-cloud` for 2–10s I2V with `audio` passthrough, `generate_audio: false` guard, cost guard, and `--dry-run`).",
+          "est_usd": 0.1,
+          "est_unit": "second",
+          "est_source": "https://openrouter.ai/api/v1/videos/models",
+          "est_as_of": "2026-11-15",
+          "est_note": "`alibaba/wan-2.7` pricing_skus.duration_seconds = $0.10/s (720p/1080p, 2–10s); $0.40 estimated for a 4s audio-conditioned clip."
+        },
         "veo": {
           "path": "providers/clip/veo.mjs",
           "tier": "plugin",
