@@ -8,7 +8,7 @@ export * from "./anchors.mjs";
 
 // Fields the pipeline writes while producing. They are left out of the approval hash, so
 // producing a video never invalidates the approval, and any creative edit always does.
-const PRODUCED_TOP = new Set(["approval", "grid", "_music_generated"]);
+const PRODUCED_TOP = new Set(["approval", "grid", "_music_generated", "audio_master_duration_ms"]);
 const PRODUCED_SCENE = new Set([
   "audio_ms",
   "_audio",

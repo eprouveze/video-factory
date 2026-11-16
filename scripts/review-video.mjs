@@ -48,7 +48,7 @@ const probeRaw = execFileSync(
   "ffprobe",
   [
     "-v", "error",
-    "-show_entries", "format=duration,size,bit_rate:stream=width,height,r_frame_rate,codec_name",
+    "-show_entries", "format=duration,size,bit_rate:stream=codec_type,duration,nb_frames,width,height,r_frame_rate,codec_name",
     "-of", "json",
     videoPath,
   ],
@@ -56,11 +56,14 @@ const probeRaw = execFileSync(
 );
 const probe = JSON.parse(probeRaw);
 const formatInfo = probe.format || {};
-const videoStream = (probe.streams || []).find((s) => s.codec_name !== "mp3" && s.codec_name !== "aac") || {};
-const audioStream = (probe.streams || []).find((s) => s.codec_name === "mp3" || s.codec_name === "aac" || s.codec_name === "opus");
+const videoStream = (probe.streams || []).find((s) => s.codec_type === "video") || {};
+const audioStream = (probe.streams || []).find((s) => s.codec_type === "audio");
 
 const durationS = parseFloat(formatInfo.duration || "0");
 const durationMs = Math.round(durationS * 1000);
+const videoDurationMs = videoStream.duration
+  ? Math.round(parseFloat(videoStream.duration) * 1000)
+  : durationMs;
 const width = parseInt(videoStream.width || "0", 10);
 const height = parseInt(videoStream.height || "0", 10);
 const sizeBytes = parseInt(formatInfo.size || "0", 10);
@@ -77,28 +80,40 @@ if (manifestPath && existsSync(manifestPath)) {
   try {
     manifestData = JSON.parse(readFileSync(manifestPath, "utf8"));
     const scenes = manifestData.scenes || [];
-    const expectedDurationMs = scenes.reduce((acc, s) => {
-      return acc + (s.duration_ms || (s.duration_estimate_s || 4) * 1000);
-    }, 0);
-    const durationDeltaMs = Math.abs(durationMs - expectedDurationMs);
-    if (durationDeltaMs > 500) {
+    const isMusic = manifestData.mode === "music";
+    const expectedDurationMs =
+      manifestData.audio_master_duration_ms ||
+      scenes.reduce((acc, s) => {
+        return acc + (s.duration_ms || (s.duration_estimate_s || 4) * 1000);
+      }, 0);
+    const fps = manifestData.fps || 30;
+    const maxDeltaMs = isMusic ? Math.ceil(1000 / fps) + 2 : 500;
+    const videoDeltaMs = Math.abs(videoDurationMs - expectedDurationMs);
+    const containerDeltaMs = Math.abs(durationMs - expectedDurationMs);
+    // Container duration in H.264+AAC MP4s can exceed video stream length by up to ~2 AAC frames (~45ms at 48kHz).
+    const maxContainerDeltaMs = isMusic ? maxDeltaMs + 45 : 500;
+    if (videoDeltaMs > maxDeltaMs || containerDeltaMs > maxContainerDeltaMs) {
       issues.push({
         timestamp: "00:00",
         category: "duration_fidelity",
         severity: "error",
-        message: `Duration fidelity violation: video is ${(durationMs / 1000).toFixed(2)}s but manifest scenes total ${(expectedDurationMs / 1000).toFixed(2)}s (delta ${durationDeltaMs}ms exceeds 500ms limit)`,
+        message: `Duration fidelity violation: video stream is ${(videoDurationMs / 1000).toFixed(3)}s (container ${(durationMs / 1000).toFixed(3)}s) vs expected ${(expectedDurationMs / 1000).toFixed(3)}s (video delta ${videoDeltaMs}ms, container delta ${containerDeltaMs}ms)`,
       });
       motionScore -= 2.0;
     }
 
-    // Audio stream presence check when narration is expected
-    const expectsAudio = scenes.some((s) => (s.tts_script || s.tts_phonetic || s.voiceover) && s._audio);
+    // Audio stream presence check when narration or music master is expected
+    const expectsAudio =
+      isMusic ||
+      !!manifestData.audio_master_path ||
+      !!manifestData.music ||
+      scenes.some((s) => (s.tts_script || s.tts_phonetic || s.voiceover) && s._audio);
     if (expectsAudio && !audioStream) {
       issues.push({
         timestamp: "00:00",
         category: "audio",
         severity: "error",
-        message: "Manifest contains narrated scenes but rendered MP4 has no audio stream.",
+        message: "Manifest expects audio (narration or music master) but rendered MP4 has no audio stream.",
       });
       motionScore -= 2.0;
     }

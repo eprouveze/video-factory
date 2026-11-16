@@ -124,13 +124,68 @@ const Scrim = ({ center }: any) => (
   />
 );
 
-export const Scene = ({ scene, brand }: any) => {
+const TechTestPlaceholder = ({ scene }: any) => {
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
+  const p = Math.min(1, Math.max(0, frame / Math.max(1, durationInFrames)));
+  const sec = (t: number) => `${(t / 1000).toFixed(2)}s`;
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#0a1018",
+        color: "#cbd5e1",
+        fontFamily: "Inter, system-ui, sans-serif",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "6%",
+      }}
+    >
+      <div
+        style={{
+          border: "2px dashed #38bdf8",
+          borderRadius: 12,
+          padding: "40px 56px",
+          maxWidth: 1100,
+          width: "100%",
+          background: "rgba(15, 23, 42, 0.85)",
+        }}
+      >
+        <div style={{ color: "#f59e0b", fontSize: 22, fontWeight: 700, letterSpacing: 2, marginBottom: 14 }}>
+          INTERNAL QA TECH TEST PLACEHOLDER — NO MEDIA ASSET
+        </div>
+        <div style={{ fontSize: 44, fontWeight: 800, color: "#f8fafc", marginBottom: 12 }}>
+          {scene.id}{scene.title ? ` — ${scene.title}` : ""}
+        </div>
+        <div style={{ fontSize: 24, color: "#94a3b8", marginBottom: 18 }}>
+          {scene.in_ms != null && scene.out_ms != null ? `${sec(scene.in_ms)} → ${sec(scene.out_ms)}` : ""}
+          {scene.camera_side ? ` · Camera: ${scene.camera_side}` : ""}
+          {scene.eye_state ? ` · Eye: ${scene.eye_state}` : ""}
+          {scene.requires_lipsync ? " · Lip-sync: YES" : ""}
+        </div>
+        {scene.placeholder_label ? (
+          <div style={{ fontSize: 26, color: "#e2e8f0", marginBottom: 22 }}>{scene.placeholder_label}</div>
+        ) : null}
+        <div style={{ height: 6, width: "100%", background: "#1e293b", borderRadius: 3, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${(p * 100).toFixed(2)}%`, background: "#38bdf8" }} />
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+export const Scene = ({ scene, brand, mode }: any) => {
   const v = scene.visual ?? {};
   const bg = brand?.palette?.[0] ?? "#0b0b0f";
   const hasMedia = !!v.asset && (v.source === "image" || v.source === "clip");
+  const isMusic = mode === "music";
 
   let visual: any;
-  if (v.source === "code") {
+  if (v.source === "placeholder") {
+    if (!scene.tech_test_placeholder) {
+      throw new Error(`Scene ${scene.id}: placeholder requires tech_test_placeholder=true`);
+    }
+    visual = <TechTestPlaceholder scene={scene} />;
+  } else if (v.source === "code") {
     // pass the narration as a default body; let the agent's props (headline/subtext/
     // eyebrow/value/label/bg/accent) override. Do NOT pass scene.title — it's an
     // internal label, not on-screen copy.
@@ -158,9 +213,12 @@ export const Scene = ({ scene, brand }: any) => {
     visual = (
       <OffthreadVideo
         src={asset(v.asset)}
+        muted={isMusic && !scene.keep_clip_audio}
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
     );
+  } else if (isMusic) {
+    throw new Error(`Scene ${scene.id}: missing visual.asset in music mode (title-card substitution forbidden)`);
   } else {
     // Degrade gracefully: no produced asset yet → title-card fallback.
     const C = components.TitleCard;

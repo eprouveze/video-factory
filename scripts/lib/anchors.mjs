@@ -44,7 +44,19 @@ export function anchorIndex(script, anchor, occurrence = 1) {
 }
 
 export const sceneMs = (s) =>
-  s.duration_ms ?? Math.round((s.duration_estimate_s ?? 4) * 1000);
+  s.duration_ms ??
+  (s.in_ms != null && s.out_ms != null ? s.out_ms - s.in_ms : Math.round((s.duration_estimate_s ?? 4) * 1000));
+
+// Frame bounds for a scene: in music mode (in_ms/out_ms), cumulative rounding prevents drift.
+export function sceneFrameRange(s, accFrames, fps = 30) {
+  if (s.in_ms != null && s.out_ms != null) {
+    const startFrame = Math.round((s.in_ms / 1000) * fps);
+    const endFrame = Math.max(startFrame + 1, Math.round((s.out_ms / 1000) * fps));
+    return { startFrame, endFrame, durationInFrames: endFrame - startFrame };
+  }
+  const durationInFrames = Math.max(1, Math.round((sceneMs(s) / 1000) * fps));
+  return { startFrame: accFrames, endFrame: accFrames + durationInFrames, durationInFrames };
+}
 
 // When (ms from the scene start) the anchor word is spoken. Uses real word timings when
 // their count matches the script; otherwise spreads words evenly over the scene.
@@ -63,12 +75,13 @@ export function anchorMs(scene, graphic) {
 }
 
 // Cut times exactly as the compositor produces them: each scene is rounded to whole frames
-// and the frames are summed. Returns the frame and ms of every scene END.
+// and the frames are summed (or computed cumulatively from in_ms/out_ms in music mode).
 export function cutFrames(manifest) {
   const fps = manifest.fps ?? 30;
   let acc = 0;
   return (manifest.scenes ?? []).map((s) => {
-    acc += Math.max(1, Math.round((sceneMs(s) / 1000) * fps));
+    const { endFrame } = sceneFrameRange(s, acc, fps);
+    acc = endFrame;
     return { id: s.id, frame: acc, ms: (acc / fps) * 1000 };
   });
 }

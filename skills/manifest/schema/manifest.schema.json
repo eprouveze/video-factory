@@ -28,6 +28,24 @@
       "default": "remotion",
       "description": "Compositor engine to render the manifest."
     },
+    "mode": {
+      "enum": ["narration", "music"],
+      "default": "narration",
+      "description": "Temporal driver: narration (TTS-first) or music (audio_master_path controls duration)."
+    },
+    "audio_master_path": {
+      "type": "string",
+      "description": "Unmodified master song path (MP3/WAV/M4A) driving duration in music mode."
+    },
+    "audio_master_duration_ms": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Exact duration of audio_master_path measured by ffprobe."
+    },
+    "sections_path": {
+      "type": "string",
+      "description": "Optional path to sections.json defining manual/reviewable song section boundaries."
+    },
     "music": {
       "type": "string",
       "description": "Global background music asset path."
@@ -190,6 +208,16 @@
           "description": "Stable unique id, e.g. 's1'. Asset filenames key off this."
         },
         "title": { "type": "string" },
+        "in_ms": { "type": "integer", "minimum": 0 },
+        "out_ms": { "type": "integer", "minimum": 1 },
+        "section_id": { "type": "string" },
+        "camera_side": { "type": "string" },
+        "eye_state": { "enum": ["E0", "E1", "E2"] },
+        "requires_lipsync": { "type": "boolean" },
+        "lyrics_line": { "type": "string" },
+        "tech_test_placeholder": { "type": "boolean" },
+        "placeholder_label": { "type": "string" },
+        "keep_clip_audio": { "type": "boolean" },
         "tts_script": {
           "type": "string",
           "description": "EXACT narration. Source of truth for TIMING — scene duration is derived from real audio length, never estimated. Also the on-screen text and caption source. When `voiceover` is set, keep tts_script verbatim-equal to the spoken clip so captions and on-screen copy match."
@@ -238,8 +266,8 @@
           "additionalProperties": false,
           "properties": {
             "source": {
-              "enum": ["code", "image", "clip", "screen_rec", "avatar"],
-              "description": "code = Remotion-animated (zero-key); image = generated still; clip = generative video; screen_rec = supplied recording; avatar = talking head."
+              "enum": ["code", "image", "clip", "screen_rec", "avatar", "placeholder"],
+              "description": "code = Remotion-animated (zero-key); image = generated still; clip = generative video; screen_rec = supplied recording; avatar = talking head; placeholder = internal QA tech-test only."
             },
             "visual_brief": {
               "type": "string",
