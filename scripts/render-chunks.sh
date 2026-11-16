@@ -54,7 +54,7 @@ for ((a=0; a<total; a+=chunk)); do
   f=out/chunks/$(printf %06d "$a").mp4
   if [ ! -s "$f" ]; then
     extra=(); [ -n "$props" ] && extra=(--props="$props")
-    "$remotion" render "$entry" "$comp" "$f.part.mp4" --frames="$a-$b" --concurrency="$conc" --muted --log=error "${extra[@]}"
+    "$remotion" render "$entry" "$comp" "$f.part.mp4" --frames="$a-$b" --concurrency="$conc" --muted --log=error ${extra[@]+"${extra[@]}"}
     mv "$f.part.mp4" "$f"
     echo "$(date -u +%H:%M:%S) chunk $a-$b done" >> out/chunks/progress.log
   fi
