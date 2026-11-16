@@ -78,6 +78,15 @@ duration, and shots are cut to it.
   lands on a beat; a music-mode EDL sets cut points explicitly and just records the
   grid in the manifest.
 
+The whole path has its own command and template: `/video-factory:new music-video` scaffolds
+a `mode: "music"` project, and `/video-factory:music-video` walks it through song lock,
+stems and word timings, cut list, animatic on the real audio, takes (prompt saved first, one
+record per take, at most 3 per shot), lip-sync measured against the lead-vocal stem, B-roll
+on the beat grid, overlays, a resumable chunked build with the master audio muxed back
+bit-identical, QA and subtitles, with a human gate before every paid call. Its helpers are
+`scripts/take-record.mjs`, `shot-table.mjs`, `lipsync-check.py`, `mux-original-audio.sh`,
+`render-chunks.sh`, `contact-sheet.sh` and `srt-from-words.mjs`.
+
 ## What each tier needs
 
 | Tier | Unlocks | Needs |

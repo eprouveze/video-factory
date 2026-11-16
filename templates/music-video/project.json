@@ -1,0 +1,7 @@
+{
+  "template": "music-video",
+  "status": "draft",
+  "created": null,
+  "scenes": {},
+  "_note": "Reconciliation ledger: the pipeline records per-shot produced state here (start still, takes, verdict) so a crash resumes instead of restarting. Per-take records live in takes/<shot-id>/ (scripts/take-record.mjs). status: draft -> approved -> producing -> composed."
+}
