@@ -104,7 +104,7 @@ export function writeTake(dir, input, { maxTakes = DEFAULT_MAX_TAKES, allowExtra
     prompt_file: input.prompt_file,
     prompt_sha256: createHash("sha256").update(promptBytes).digest("hex"),
     reference_paths: input.reference_paths ?? [],
-    cost_estimate_usd: input.cost_estimate_usd != null ? Number(input.cost_estimate_usd) : null,
+    cost_estimate_usd: input.cost_estimate_usd != null ? numberOrThrow(input.cost_estimate_usd, "cost estimate") : null,
     result_path: input.result_path ?? null,
     verdict: input.verdict ?? null,
     created_utc: now.toISOString(),
@@ -214,4 +214,10 @@ function main(argv) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   process.exit(main(process.argv.slice(2)));
+}
+
+function numberOrThrow(value, label) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new Error(`${label} is not a number: ${value}`);
+  return n;
 }
