@@ -44,6 +44,15 @@ export function ffprobeJson(filePath) {
   return JSON.parse(raw);
 }
 
+// AAC encoder priming/padding can shift audio duration by tens of ms.
+const AUDIO_TOL_S = 0.06;
+
+export const DEFAULT_VISUAL_CHECKS = [
+  "identity_matches_reference",
+  "no_unrequested_elements",
+  "set_and_props_intact",
+];
+
 export function evaluateClipAcceptance({
   probe,
   refAudioProbe = null,
@@ -168,8 +177,8 @@ export function evaluateClipAcceptance({
           : null;
       const pass =
         delta !== null &&
-        delta <= frameTolS + 1e-6 &&
-        Math.abs(clipAudioDur - targetDurationS) <= frameTolS + 1e-6;
+        delta <= AUDIO_TOL_S + 1e-6 &&
+        Math.abs(clipAudioDur - targetDurationS) <= AUDIO_TOL_S + 1e-6;
       checks.push({
         name: "original_audio_preserved",
         pass,
@@ -219,12 +228,10 @@ export function evaluateClipAcceptance({
     failures,
     checks,
     visual_qa_status: "PENDING_HUMAN_VISUAL_REVIEW",
-    visual_checks_required: [
-      "lips_truly_singing_on_phonemes",
-      "p01_face_identity_and_hair_locked",
-      "e0_eyes_no_unrequested_amber_or_glow",
-      "opaque_console_and_south_wall_intact",
-    ],
+    visual_checks_required:
+      Array.isArray(expect.checks) && expect.checks.length > 0
+        ? expect.checks.map(String)
+        : DEFAULT_VISUAL_CHECKS,
   };
 }
 
@@ -248,7 +255,7 @@ if (
   const args = parseArgs(process.argv.slice(2));
   if (!args.clip) {
     process.stderr.write(
-      "Usage: node scripts/accept-clip.mjs --clip <file.mp4> [--duration-s 4] [--fps 30] [--aspect 16:9] [--strict-fps] [--audio-mode silent|preserved|any] [--ref-audio <ref.wav>] [--provenance <prov.json>]\n",
+      "Usage: node scripts/accept-clip.mjs --clip <file.mp4> [--duration-s 4] [--fps 30] [--aspect 16:9] [--strict-fps] [--audio-mode silent|preserved|any] [--ref-audio <ref.wav>] [--provenance <prov.json>] [--checks a,b,c]\n",
     );
     process.exit(2);
   }
@@ -272,6 +279,9 @@ if (
       aspect: args.aspect ?? "16:9",
       strictFps: Boolean(args.strictFps),
       audioMode: args["audio-mode"],
+      checks: args.checks
+        ? args.checks.split(",").map((c) => c.trim()).filter(Boolean)
+        : undefined,
     },
   });
 

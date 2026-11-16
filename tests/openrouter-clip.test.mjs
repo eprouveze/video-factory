@@ -7,7 +7,9 @@ import { join, resolve } from "node:path";
 import {
   buildOpenRouterVideoRequest,
   clampDuration,
+  downloadHeaders,
   enforceCostGuard,
+  estimateCostDetail,
   estimateCostUsd,
   redactRequestForLog,
   videoError,
@@ -15,6 +17,7 @@ import {
   videoState,
 } from "../providers/clip/openrouter.mjs";
 import {
+  DEFAULT_VISUAL_CHECKS,
   evaluateClipAcceptance,
   parseFrameRate,
 } from "../scripts/accept-clip.mjs";
@@ -27,13 +30,13 @@ test("openrouter builds 4s alibaba/wan-2.7 audio-conditioned payload under atlas
   writeFileSync(wav, Buffer.from("RIFF0000WAVEfmt "));
 
   const built = buildOpenRouterVideoRequest({
-    brief: "Lex sings dry close-up in camera N facing south wall",
+    brief: "A singer performs a dry close-up facing the camera",
     aspect: "16:9",
     duration_s: 4,
     resolution: "720p",
     ref_frame: ref,
     audio_path: wav,
-    negative_prompt: "glowing amber eyes, shifted console",
+    negative_prompt: "glowing eyes, shifted props",
     dry_run: true,
     max_cost_usd: 0.5,
   });
@@ -58,7 +61,7 @@ test("openrouter builds 4s alibaba/wan-2.7 audio-conditioned payload under atlas
     options: {
       "atlas-cloud": {
         audio: "<HTTPS_URL_FOR:vocal-4s.wav>",
-        negative_prompt: "glowing amber eyes, shifted console",
+        negative_prompt: "glowing eyes, shifted props",
       },
     },
   });
@@ -68,15 +71,15 @@ test("openrouter builds 4s alibaba/wan-2.7 audio-conditioned payload under atlas
 
 test("openrouter sends literal https audio_url for live build without failing", () => {
   const built = buildOpenRouterVideoRequest({
-    brief: "Lex sings 4s test",
-    ref_frame: "https://example.com/v2o-mcu.png",
-    audio_url: "https://example.com/slice-4s.mp3",
+    brief: "A singer performs a 4s test",
+    ref_frame: "https://example.com/ref-closeup.png",
+    audio_url: "https://example.com/clip-4s.mp3",
     duration_s: 4,
     dry_run: false,
   });
   assert.equal(
     built.body.provider.options["atlas-cloud"].audio,
-    "https://example.com/slice-4s.mp3",
+    "https://example.com/clip-4s.mp3",
   );
   assert.equal(built.body.generate_audio, false);
 });
@@ -89,7 +92,7 @@ test("openrouter rejects live audio_path without https audio_url unless opted in
   assert.throws(
     () =>
       buildOpenRouterVideoRequest({
-        brief: "Lex sings",
+        brief: "A singer performs",
         audio_path: wav,
         dry_run: false,
       }),
@@ -97,7 +100,7 @@ test("openrouter rejects live audio_path without https audio_url unless opted in
   );
 
   const allowed = buildOpenRouterVideoRequest({
-    brief: "Lex sings",
+    brief: "A singer performs",
     audio_path: wav,
     dry_run: false,
     allow_audio_data_uri: true,
@@ -114,7 +117,7 @@ test("openrouter rejects audio conditioning on models without audio passthrough"
       () =>
         buildOpenRouterVideoRequest({
           model,
-          brief: "Lex sings",
+          brief: "A singer performs",
           audio_url: "https://example.com/slice.mp3",
           dry_run: true,
         }),
@@ -210,7 +213,7 @@ test("accept-clip verifies 30fps 1-frame tolerance, 16:9 aspect, audio preservat
     },
     provenance: {
       model: "alibaba/wan-2.7",
-      request_redacted: { prompt: "Lex sings" },
+      request_redacted: { prompt: "A singer performs" },
       refs: { first_frame: { sha256: "abc123" } },
       cost_usd: 0.4,
     },
@@ -218,7 +221,22 @@ test("accept-clip verifies 30fps 1-frame tolerance, 16:9 aspect, audio preservat
   });
   assert.equal(ok.mechanical_pass, true);
   assert.equal(ok.visual_qa_status, "PENDING_HUMAN_VISUAL_REVIEW");
-  assert.equal(ok.visual_checks_required.length, 4);
+  assert.deepEqual(ok.visual_checks_required, DEFAULT_VISUAL_CHECKS);
+  const custom = evaluateClipAcceptance({
+    probe: { streams: [{ codec_type: "video", width: 1280, height: 720, avg_frame_rate: "30/1", duration: "4.000000" }] },
+    expect: { durationS: 4, fps: 30, aspect: "16:9", audioMode: "any", checks: ["a", "b"] },
+  });
+  assert.deepEqual(custom.visual_checks_required, ["a", "b"]);
+
+  // AAC priming: 40 ms audio offset (> 1 frame at 30fps) must still pass
+  const primed = evaluateClipAcceptance({
+    probe: { streams: [
+      { codec_type: "video", width: 1280, height: 720, avg_frame_rate: "30/1", duration: "4.000000" },
+      { codec_type: "audio", duration: "4.040000" } ] },
+    refAudioProbe: { streams: [{ codec_type: "audio", duration: "4.000000" }] },
+    expect: { durationS: 4, fps: 30, aspect: "16:9", audioMode: "preserved" },
+  });
+  assert.equal(primed.checks.find((c) => c.name === "original_audio_preserved").pass, true);
 
   const badDurAndAspect = evaluateClipAcceptance({
     probe: {
@@ -243,4 +261,31 @@ test("accept-clip verifies 30fps 1-frame tolerance, 16:9 aspect, audio preservat
   });
   assert.equal(badAudioLeak.mechanical_pass, false);
   assert.match(badAudioLeak.failures[0], /expected silent I2V clip/);
+});
+
+test("cost estimate never under-counts an unpriced resolution", () => {
+  const d = estimateCostDetail("alibaba/wan-2.7", 4, { resolution: "4k" });
+  assert.equal(d.approximate, true);
+  assert.equal(d.usd, 0.4);
+  assert.equal(estimateCostDetail("alibaba/wan-2.7", 4).approximate, false);
+  // wan-2.6 has distinct per-resolution prices: unknown res uses the highest
+  const hi = estimateCostDetail("alibaba/wan-2.6", 5, { resolution: "4k" });
+  assert.ok(hi.usd >= estimateCostUsd("alibaba/wan-2.6", 5, { resolution: "720p" }));
+});
+
+test("generate_audio defaults to false unless explicitly requested", () => {
+  const base = { brief: "A singer performs", dry_run: true };
+  assert.equal(buildOpenRouterVideoRequest(base).body.generate_audio, false);
+  assert.equal(
+    buildOpenRouterVideoRequest({ ...base, generate_audio: true }).body.generate_audio,
+    true,
+  );
+});
+
+test("download auth header only goes to openrouter.ai hosts", () => {
+  assert.deepEqual(downloadHeaders("https://openrouter.ai/api/v1/videos/1/content", "k"), { Authorization: "Bearer k" });
+  assert.deepEqual(downloadHeaders("https://cdn.openrouter.ai/x.mp4", "k"), { Authorization: "Bearer k" });
+  assert.deepEqual(downloadHeaders("https://evil.example.com/x.mp4", "k"), {});
+  assert.deepEqual(downloadHeaders("https://openrouter.ai.evil.com/x.mp4", "k"), {});
+  assert.deepEqual(downloadHeaders("not a url", "k"), {});
 });

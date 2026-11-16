@@ -167,18 +167,46 @@ export function clampDuration(value, model = "alibaba/wan-2.7") {
   return best;
 }
 
-export function estimateCostUsd(
+function rateOf(entry, isI2V) {
+  return typeof entry === "number" ? entry : isI2V ? entry?.i2v : entry?.t2v;
+}
+
+// Returns { usd, approximate }. When the requested resolution has no price
+// entry, the HIGHEST known per-second rate is used so cost is never under-estimated.
+export function estimateCostDetail(
   model,
   durationS,
   { resolution = "720p", isI2V = true } = {},
 ) {
   const spec = OPENROUTER_VIDEO_CATALOG[model];
   if (!spec?.pricePerSec) return null;
-  const entry = spec.pricePerSec[resolution] ?? Object.values(spec.pricePerSec)[0];
-  if (entry == null) return null;
-  const rate = typeof entry === "number" ? entry : isI2V ? entry.i2v : entry.t2v;
+  let approximate = false;
+  let rate;
+  if (spec.pricePerSec[resolution] != null) {
+    rate = rateOf(spec.pricePerSec[resolution], isI2V);
+  } else {
+    approximate = true;
+    const rates = Object.values(spec.pricePerSec)
+      .map((e) => rateOf(e, isI2V))
+      .filter(Number.isFinite);
+    rate = rates.length ? Math.max(...rates) : NaN;
+  }
   if (!Number.isFinite(rate)) return null;
-  return Math.round(rate * durationS * 1e6) / 1e6;
+  return { usd: Math.round(rate * durationS * 1e6) / 1e6, approximate };
+}
+
+export function estimateCostUsd(model, durationS, opts = {}) {
+  return estimateCostDetail(model, durationS, opts)?.usd ?? null;
+}
+
+export function downloadHeaders(url, key) {
+  try {
+    const host = new URL(url).hostname;
+    if (host === "openrouter.ai" || host.endsWith(".openrouter.ai")) {
+      return { Authorization: `Bearer ${key}` };
+    }
+  } catch {}
+  return {};
 }
 
 export function enforceCostGuard(estCostUsd, maxCostUsd) {
@@ -322,10 +350,12 @@ export function buildOpenRouterVideoRequest(req, cfg = {}) {
   }
 
   const audioRef = resolveAudioInput(req, specWithId, dryRun, refHashes);
-  const estCostUsd = estimateCostUsd(model, duration, {
+  const costDetail = estimateCostDetail(model, duration, {
     resolution,
     isI2V: frameImages.length > 0,
   });
+  const estCostUsd = costDetail?.usd ?? null;
+  const estCostApproximate = costDetail?.approximate ?? false;
   enforceCostGuard(estCostUsd, req.max_cost_usd ?? cfg.clip?.max_cost_usd);
 
   const body = {
@@ -340,8 +370,8 @@ export function buildOpenRouterVideoRequest(req, cfg = {}) {
   if (spec.supportsGenerateAudioFlag) {
     if (req.generate_audio !== undefined) {
       body.generate_audio = Boolean(req.generate_audio);
-    } else if (audioRef) {
-      // Never synthesize competing ambient audio when conditioning on external song track
+    } else {
+      // Provider-synthesized audio is opt-in; never bake it into narrated scenes.
       body.generate_audio = false;
     }
   }
@@ -382,6 +412,7 @@ export function buildOpenRouterVideoRequest(req, cfg = {}) {
     model,
     providerSlug: spec.providerSlug,
     estCostUsd,
+    estCostApproximate,
     refHashes,
   };
 }
@@ -584,7 +615,7 @@ async function main() {
   }
 
   const vr = await fetch(contentUrl, {
-    headers: { Authorization: `Bearer ${key}` },
+    headers: downloadHeaders(contentUrl, key),
     signal: AbortSignal.timeout(180000),
   });
   if (!vr.ok) fail(`download ${vr.status} (job_id=${jobId})`);
