@@ -89,7 +89,7 @@ which is which.
 
 ### `avatar` — audio (+ likeness) → talking-head clip
 ```jsonc
-{ "audio_path": "audio/s1.mp3", "likeness_id": "emmanuel-2026",
+{ "audio_path": "audio/s1.mp3", "likeness_id": "presenter-2026",
   "aspect": "9:16", "out_path": "clips/s1-avatar.mp4" }
 // out
 { "clip_path": "clips/s1-avatar.mp4", "duration_ms": 8120 }

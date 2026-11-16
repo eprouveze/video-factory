@@ -71,7 +71,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
 **Goal:** broadcast-grade last 10% for a premium product tier.
 
 - 🔭 `davinci` finish adapter: Resolve API applies a saved PowerGrade per look to one clean
-  master on a dedicated Studio box (Emmanuel's license)
+  master on a dedicated Studio box (the maintainer's license)
 - 🔭 AI ops: Super Scale upscale, Magic Mask relight, noise reduction, HDR delivery
 - 🔭 External watchdog (modal-dialog hang detection; the box monitored from M4, not itself)
 - 🔭 Remotion → ProRes/EDL export handoff
