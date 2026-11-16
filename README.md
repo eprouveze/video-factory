@@ -60,16 +60,35 @@ echo '{"manifest_path":"../examples/manifest.example.json","format":"16:9","out_
   | node ../providers/compositor/remotion.mjs
 ```
 
+## Music videos (song-led)
+
+A finished song can lead instead of a voiceover: the audio master sets the total
+duration, and shots are cut to it.
+
+- `scripts/music-manifest.mjs <edl.json>` builds a `mode: "music"` manifest from an
+  edit-decision list. ffprobe measures the master; shots must tile `[0, duration]`
+  exactly; every referenced clip/image must exist on disk; sections (verse, chorus…)
+  are checked for overlap. Scenes carry `lyrics_line`, `camera_side` or
+  `requires_lipsync` as given; there is no TTS — the master is the audio.
+- `scripts/render-manifest.mjs <manifest.json | project-dir> --out <mp4>` renders any
+  manifest through the compositor; in music mode the master is staged as the bed.
+- Beats still come from `scripts/beat-map.mjs` (tempo, beats and downbeats measured
+  from the audio; `reliable: false` when there is no pulse). In narration projects
+  `scripts/snap-grid.mjs` holds each scene a little past its last word so every cut
+  lands on a beat; a music-mode EDL sets cut points explicitly and just records the
+  grid in the manifest.
+
 ## What each tier needs
 
 | Tier | Unlocks | Needs |
 | --- | --- | --- |
 | **Core** | code-animated scenes, multi-format render, looks (ffmpeg), `say` voice | ✅ just Node + ffmpeg |
 | Voice | natural narration + word-timed captions | `ELEVENLABS_API_KEY` |
-| B-roll + images | generative clips & stills, reference-frame lock | `FAL_KEY` |
-| Captions (precise) | best word timings | `DEEPGRAM_API_KEY` (or local WhisperX) |
+| Images | generative stills, reference-frame lock | `GEMINI_API_KEY` (default) or `OPENAI_API_KEY` (gpt-image) |
+| Clips (b-roll) | generative video | `GEMINI_API_KEY` (default), `MINIMAX_API_KEY` or `KLING_API_KEY` |
+| Captions (precise) | best word timings | `ELEVENLABS_API_KEY` (Scribe, default) or `OPENAI_API_KEY` (whisper-1) |
 | Music + SFX | score + sound design | `ELEVENLABS_API_KEY` |
-| Avatar | your-own-avatar talking head | `HEYGEN_API_KEY`+`HEYGEN_AVATAR_ID`, or `SYNC_API_KEY` |
+| Avatar | your-own-avatar talking head | planned — adapters not yet written |
 | Premium finish | DaVinci grade / HDR / upscale | Resolve Studio box (deferred) |
 
 Secrets live only in the gitignored `.video-factory/config.json` or your shell env — never in
