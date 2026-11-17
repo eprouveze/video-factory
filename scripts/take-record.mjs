@@ -235,6 +235,6 @@ function numberOrThrow(value, label) {
 
 function seedOrThrow(value) {
   const n = Number(value);
-  if (!Number.isInteger(n) || n < 0) throw new Error(`seed must be a non-negative integer: ${value}`);
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error(`seed must be a non-negative integer: ${value}`);
   return n;
 }

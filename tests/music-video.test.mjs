@@ -63,6 +63,7 @@ test("take record stores the seed and the continuity line, and rejects a bad see
   assert.equal(r.continuity, "coat off");
   assert.throws(() => writeTake(takes, input(prompt, { seed: "abc" })), /seed must be a non-negative integer/);
   assert.throws(() => updateTake(takes, "S012", 1, { seed: -1 }), /seed must be a non-negative integer/);
+  assert.throws(() => updateTake(takes, "S012", 1, { seed: "9007199254740993" }), /seed must be a non-negative integer/);
   assert.equal(listTakes(takes, "S012").length, 2);
 });
 
