@@ -49,6 +49,24 @@ test("take record writes numbered takes, refuses a duplicate take and the 4th ta
   assert.throws(() => writeTake(takes, input(prompt, { shot_id: "S013", verdict: "great" })), /verdict/);
 });
 
+test("take record stores the seed and the continuity line, and rejects a bad seed", () => {
+  const { prompt, takes } = base();
+  const t1 = writeTake(takes, input(prompt, { seed: "7", continuity: "grey coat on, cup in left hand" }));
+  assert.equal(t1.seed, 7);
+  assert.equal(t1.continuity, "grey coat on, cup in left hand");
+  const t2 = writeTake(takes, input(prompt));
+  assert.equal(t2.seed, null);
+  assert.equal(t2.continuity, null);
+  updateTake(takes, "S012", 2, { seed: 11, continuity: "coat off" });
+  const r = readTake(takes, "S012", 2);
+  assert.equal(r.seed, 11);
+  assert.equal(r.continuity, "coat off");
+  assert.throws(() => writeTake(takes, input(prompt, { seed: "abc" })), /seed must be a non-negative integer/);
+  assert.throws(() => updateTake(takes, "S012", 1, { seed: -1 }), /seed must be a non-negative integer/);
+  assert.throws(() => updateTake(takes, "S012", 1, { seed: "9007199254740993" }), /seed must be a non-negative integer/);
+  assert.equal(listTakes(takes, "S012").length, 2);
+});
+
 test("take record update sets verdict and lip-sync figure", () => {
   const { prompt, takes } = base();
   writeTake(takes, input(prompt));
