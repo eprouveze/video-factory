@@ -6,10 +6,11 @@
 //   node scripts/take-record.mjs write --dir takes --shot S012 --model <id> --resolution 768p
 //        --duration 5 --prompt-file <file> [--ref <path> ...] [--cost 0.40] [--result <clip>]
 //        [--take N] [--verdict usable|redo|missing] [--max-takes 3] [--allow-extra]
+//        [--seed N] [--continuity "what the character wears and holds in this shot"]
 //   node scripts/take-record.mjs read  --dir takes --shot S012 [--take N]
 //   node scripts/take-record.mjs list  --dir takes [--shot S012]
 //   node scripts/take-record.mjs set   --dir takes --shot S012 --take N [--verdict v] [--result p]
-//        [--corr 0.41 --lag 0.04] [--cost c] [--note text]
+//        [--corr 0.41 --lag 0.04] [--cost c] [--note text] [--seed N] [--continuity text]
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -22,12 +23,15 @@ const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 const USAGE = `usage: node scripts/take-record.mjs <write|read|list|set> --dir <takes-dir> [options]
   write  --shot ID --model M --resolution R --duration S --prompt-file F [--ref P ...]
          [--cost USD] [--result P] [--take N] [--verdict usable|redo|missing]
-         [--max-takes 3] [--allow-extra]
+         [--max-takes 3] [--allow-extra] [--seed N] [--continuity TEXT]
+         --seed: the generation seed, so a take can be repeated; keep it fixed while only the prompt changes
+         --continuity: what the character wears and holds in this shot, checked against the next shot
          refuses when the prompt file does not exist, when the take already has a record,
          and when the shot already has --max-takes records (--allow-extra only after a human said yes)
   read   --shot ID [--take N]        print one record (default: the latest take)
   list   [--shot ID]                 print every record as a JSON array
   set    --shot ID --take N [--verdict v] [--result P] [--cost USD] [--corr X --lag S] [--note T]
+         [--seed N] [--continuity TEXT]
 `;
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -107,6 +111,8 @@ export function writeTake(dir, input, { maxTakes = DEFAULT_MAX_TAKES, allowExtra
     cost_estimate_usd: input.cost_estimate_usd != null ? numberOrThrow(input.cost_estimate_usd, "cost estimate") : null,
     result_path: input.result_path ?? null,
     verdict: input.verdict ?? null,
+    seed: input.seed != null && input.seed !== "" ? seedOrThrow(input.seed) : null,
+    continuity: input.continuity != null && input.continuity !== "" ? String(input.continuity) : null,
     created_utc: now.toISOString(),
   };
   mkdirSync(shotDir(dir, input.shot_id), { recursive: true });
@@ -119,7 +125,8 @@ export function updateTake(dir, shot, take, patch) {
   if (patch.verdict != null && !VERDICTS.includes(patch.verdict)) {
     throw new Error(`verdict must be one of ${VERDICTS.join(", ")}`);
   }
-  for (const k of ["verdict", "result_path", "note"]) if (patch[k] != null) rec[k] = patch[k];
+  for (const k of ["verdict", "result_path", "note", "continuity"]) if (patch[k] != null) rec[k] = patch[k];
+  if (patch.seed != null && patch.seed !== "") rec.seed = seedOrThrow(patch.seed);
   if (patch.cost_estimate_usd != null) rec.cost_estimate_usd = Number(patch.cost_estimate_usd);
   if (patch.lipsync_corr != null) {
     rec.lipsync = { corr: Number(patch.lipsync_corr), ...(patch.lipsync_lag_s != null ? { lag_s: Number(patch.lipsync_lag_s) } : {}) };
@@ -184,6 +191,8 @@ function main(argv) {
           result_path: o.result,
           take: o.take,
           verdict: o.verdict,
+          seed: o.seed,
+          continuity: o.continuity,
         },
         { maxTakes, allowExtra: !!o["allow-extra"] },
       );
@@ -202,6 +211,8 @@ function main(argv) {
         lipsync_corr: o.corr,
         lipsync_lag_s: o.lag,
         note: o.note,
+        seed: o.seed,
+        continuity: o.continuity,
       });
       process.stdout.write(JSON.stringify(rec, null, 2) + "\n");
     }
@@ -219,5 +230,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 function numberOrThrow(value, label) {
   const n = Number(value);
   if (!Number.isFinite(n)) throw new Error(`${label} is not a number: ${value}`);
+  return n;
+}
+
+function seedOrThrow(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) throw new Error(`seed must be a non-negative integer: ${value}`);
   return n;
 }

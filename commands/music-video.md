@@ -54,6 +54,14 @@ records + clips, `output/` films and sheets, `manifest.json`.
 9. One start still per shot, plus a guide still per recurring character or object state, so
    identity survives. Stills are references for clips, not shots. Write one prompt file per
    still, generate each in a clean session, and keep `refs/` names tied to shot ids.
+   - Character sheet: for every recurring character, one sheet that shows them from several
+     angles, plus one sheet per outfit. Later shots are checked against the sheet, not
+     against the previous clip.
+   - Sheets and guide stills use a plain background: a model carries whatever stands behind
+     the character into the new scene.
+   - Continuity list: one line per shot saying what each character wears and holds. A change
+     inside a scene (a coat put on, an object picked up) is carried into every later shot of
+     that scene. The line goes into the take record (`--continuity`).
 - **GATE 5:** the owner accepts each still as a reference. Reject, do not patch, stills that
   carry collage, dashboards or stray elements.
 
@@ -64,11 +72,15 @@ records + clips, `output/` films and sheets, `manifest.json`.
     `minimax.mjs`, ...):
     1. Save the prompt to `$P/prompts/<shot>-t<NN>.txt` BEFORE generating. End it with
        "No text, no captions, no interface, no logos."
+       Do not name what must not appear: one word (a job, a place) can add its uniform,
+       emblem or prop even when a reference image is given.
     2. Cheapest resolution first (for example 768p); a higher resolution only for shots judged usable.
     3. Mode: lip-sync = reference mode (start still + identity guide + the lead-vocal slice);
        silent = first frame; transition = first + last frame. Reference mode cannot be mixed
        with first/last frame.
-    4. Record the take: `node scripts/take-record.mjs write --dir $P/takes --shot S012 --model <served id> --resolution 768p --duration 5 --prompt-file $P/prompts/S012-t01.txt --ref $P/refs/S012.png --cost 0.40 --result $P/takes/S012/t01.mp4`.
+    4. Record the take: `node scripts/take-record.mjs write --dir $P/takes --shot S012 --model <served id> --resolution 768p --duration 5 --prompt-file $P/prompts/S012-t01.txt --ref $P/refs/S012.png --cost 0.40 --result $P/takes/S012/t01.mp4 --seed 7 --continuity "grey coat on, cup in left hand"`.
+       Pass a seed where the adapter accepts one, record it, and keep it fixed while only the
+       prompt changes, so that a different result comes from the prompt and not from chance.
        It refuses a missing prompt file, a take number that already has a record, and a 4th
        take of a shot.
     5. Gate the file: `node scripts/accept-clip.mjs` (container, aspect, duration).
@@ -122,16 +134,19 @@ records + clips, `output/` films and sheets, `manifest.json`.
     clip means it ran out: re-time it).
 22. Contact sheet: `bash scripts/contact-sheet.sh $P/manifest.json $P/output/film.mp4 --out $P/output/sheet.jpg`;
     look at it. Per-shot table: `node scripts/shot-table.mjs --dir $P/takes --manifest $P/manifest.json --out $P/output/shot-table.md`.
+23. Continuity: `node scripts/take-record.mjs list --dir $P/takes`, read the `continuity`
+    line of each chosen take in film order, and compare with the contact sheet. Every change
+    of clothing or object must be explained by the shot before it.
 - **GATE 8:** the owner watches the film and the table. Each note they give is recorded
   verbatim and numbered, and answered DONE / PARTIAL / OPEN in the next report.
 
 ## Phase 12 — Subtitles  (free)
-23. `node scripts/srt-from-words.mjs $P/timing/words.json $P/timing/lines.txt --out $P/output/subtitles`
+24. `node scripts/srt-from-words.mjs $P/timing/words.json $P/timing/lines.txt --out $P/output/subtitles`
     writes `subtitles.srt` and `subtitles.vtt`, with line starts and ends from the measured
     words. Keep lines to 42 characters; add sound descriptions for instrumental passages by hand.
 
 ## Phase 13 — Delivery
-24. Deliver the film, the clips, the sheets, the shot table and the subtitle files. Keep
+25. Deliver the film, the clips, the sheets, the shot table and the subtitle files. Keep
     video out of git. Write the report: audio MD5, duration check, QA results, total recorded
     spend (the sum of take costs), and the list of what is still a candidate.
 
