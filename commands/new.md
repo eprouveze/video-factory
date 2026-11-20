@@ -22,6 +22,9 @@ Scaffold a project directory the rest of the pipeline operates on.
    - `project.json` — `{ "template": "<t>", "status": "draft", "scenes": {} }` (the
      reconciliation ledger: planned-vs-produced state per scene).
    - empty `assets/ audio/ clips/ output/`.
+   - for `music-video`, also empty `song/ timing/ refs/ prompts/ takes/` (the layout
+     `/video-factory:music-video` reads), and leave the template's `README.md` behind if the
+     target repository does not accept documents.
 3. Tell the user the project path and the next step:
    - Fill in the brief, then `/video-factory:video` to author + produce, **or** hand-edit
      `manifest.json` and run `/video-factory:render` for the zero-key path.
