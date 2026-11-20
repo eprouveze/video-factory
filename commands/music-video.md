@@ -62,6 +62,18 @@ records + clips, `output/` films and sheets, `manifest.json`.
    - Continuity list: one line per shot saying what each character wears and holds. A change
      inside a scene (a coat put on, an object picked up) is carried into every later shot of
      that scene. The line goes into the take record (`--continuity`).
+   - Geometry blockout: when several shots share one set, or a shot depends on where an element
+     stands, build the set in 3D, render each shot's camera and have the image model repaint the
+     render. The 3D set is the geometry authority (positions and sizes); the image model only
+     paints the look. Verify the repainted stills on a contact sheet against the renders before any
+     paid clip. See `docs/blockout-set-route.md`.
+   - Eye and face details: plan small details (an ember in a pupil, an iris pattern) on close-ups
+     only. At medium-shot size the video model does not carry them, even with a close-up as an
+     extra reference.
+   - Upscaling: never run a face-restoring or automatic upscaler on designed faces. It repaints
+     irises and features (a CLI mode with face recovery on does this by default). Use a
+     non-generative upscale (for example Lanczos resampling in ffmpeg), or regenerate at the higher
+     resolution.
 - **GATE 5:** the owner accepts each still as a reference. Reject, do not patch, stills that
   carry collage, dashboards or stray elements.
 
@@ -83,8 +95,11 @@ records + clips, `output/` films and sheets, `manifest.json`.
        prompt changes, so that a different result comes from the prompt and not from chance.
        It refuses a missing prompt file, a take number that already has a record, and a 4th
        take of a shot.
-    5. Gate the file: `node scripts/accept-clip.mjs` (container, aspect, duration).
-    6. Set the verdict: `node scripts/take-record.mjs set --dir $P/takes --shot S012 --take 1 --verdict usable|redo|missing`.
+    5. The `minimax.mjs` adapter refuses, before the API call, a reference image whose width/height
+       is outside [0.4, 2.5] (a wide eye crop at 2.61 fails the whole task), reference audio that is
+       not `.wav`, and a first frame mixed with reference inputs.
+    6. Gate the file: `node scripts/accept-clip.mjs` (container, aspect, duration).
+    7. Set the verdict: `node scripts/take-record.mjs set --dir $P/takes --shot S012 --take 1 --verdict usable|redo|missing`.
 12. **At most 3 takes per shot.** A 4th needs the owner's go for that shot (`--allow-extra`);
     a failed shot keeps its start still and the verdict `redo` or `missing`.
 - **GATE 7 (per shot or batch):** the owner picks the takes by eye.
@@ -130,6 +145,8 @@ records + clips, `output/` films and sheets, `manifest.json`.
     check and duration fidelity). Also run the raw detectors and read the timestamps:
     `ffmpeg -i film.mp4 -vf freezedetect=n=-60dB:d=0.22 -an -f null -` and
     `ffmpeg -i film.mp4 -vf blackdetect=d=0.1:pix_th=0.05 -an -f null -`.
+    Then `python3 scripts/stray_frame_check.py film.mp4`: it finds 1 or 2 frame shots at joins, which
+    the freeze and black checks miss (see `docs/rough-cut-tools.md`).
     Expect freezes only where a still is held on purpose (and a freeze at the very end of a
     clip means it ran out: re-time it).
 22. Contact sheet: `bash scripts/contact-sheet.sh $P/manifest.json $P/output/film.mp4 --out $P/output/sheet.jpg`;
@@ -146,7 +163,8 @@ records + clips, `output/` films and sheets, `manifest.json`.
     words. Keep lines to 42 characters; add sound descriptions for instrumental passages by hand.
 
 ## Phase 13 — Delivery
-25. Deliver the film, the clips, the sheets, the shot table and the subtitle files. Keep
+25. For YouTube: private upload first, captions as timed text, credentials from the environment
+    (`docs/youtube-delivery.md`). Deliver the film, the clips, the sheets, the shot table and the subtitle files. Keep
     video out of git. Write the report: audio MD5, duration check, QA results, total recorded
     spend (the sum of take costs), and the list of what is still a candidate.
 

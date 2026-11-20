@@ -13,6 +13,7 @@ import {
   resultUrl,
   taskError,
   taskState,
+  imageSize,
 } from "../providers/clip/minimax.mjs";
 
 test("minimax builds a text-only request", () => {
@@ -121,4 +122,54 @@ test("minimax cost comes from billed seconds and the price table", () => {
   assert.equal(costUsd(t("MiniMax-H3-Lite", "768P", 10)), 0.4);
   assert.equal(costUsd({ model: "MiniMax-H3", resolution: "768P" }), undefined);
   assert.equal(costUsd(t("Other", "768P", 5)), undefined);
+});
+
+function png(w, h) {
+  const b = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+  b.writeUInt32BE(w, 16);
+  b.writeUInt32BE(h, 20);
+  return b;
+}
+
+test("minimax gate: reference image aspect must be within [0.4, 2.5]", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const ok = join(dir, "ok.png");
+  const wide = join(dir, "wide.png");
+  writeFileSync(ok, png(1024, 576));
+  writeFileSync(wide, png(2610, 1000));
+  assert.deepEqual(imageSize(png(1024, 576)), { w: 1024, h: 576 });
+  const { body } = buildMinimaxRequest({ brief: "x", ref_images: [ok] });
+  assert.equal(body.content[1].role, "reference_image");
+  assert.equal(body.ratio, "adaptive");
+  assert.throws(
+    () => buildMinimaxRequest({ brief: "x", ref_images: [wide] }),
+    /outside \[0.4, 2.5\]/,
+  );
+});
+
+test("minimax gate: reference audio must be .wav", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const wav = join(dir, "a.wav");
+  const mp3 = join(dir, "a.mp3");
+  writeFileSync(wav, Buffer.from([1]));
+  writeFileSync(mp3, Buffer.from([1]));
+  const { body } = buildMinimaxRequest({ brief: "x", ref_audio: [wav] });
+  assert.equal(body.content[1].role, "reference_audio");
+  assert.throws(
+    () => buildMinimaxRequest({ brief: "x", ref_audio: [mp3] }),
+    /must be \.wav/,
+  );
+});
+
+test("minimax gate: first frame cannot mix with reference mode", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const f = join(dir, "f.png");
+  const w = join(dir, "a.wav");
+  writeFileSync(f, png(100, 100));
+  writeFileSync(w, Buffer.from([1]));
+  assert.throws(
+    () => buildMinimaxRequest({ brief: "x", ref_frame: f, ref_audio: [w] }),
+    /choose one mode/,
+  );
 });

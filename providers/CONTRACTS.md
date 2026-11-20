@@ -73,6 +73,9 @@ which is which.
 { "clip_path": "clips/s3.mp4", "duration_ms": 8000 }
 ```
 
+The MiniMax adapter also accepts `ref_images[]` and `ref_audio[]` (reference mode, not mixable with
+`ref_frame`) and fails before the API call on an image aspect ratio outside [0.4, 2.5] or non-`.wav` audio.
+
 ### `music` — brief → track
 ```jsonc
 { "brief": "warm lo-fi piano, building", "duration_ms": 45000, "out_path": "audio/music-ch1.mp3" }
