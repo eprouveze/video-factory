@@ -47,9 +47,14 @@ export const TOKEN_FIELDS = [
   "thinking_tokens",
 ];
 const DEFAULT_IDLE_CAP_MIN = 15;
-// A user line that starts like this was written by the harness, not typed by a person.
-const HARNESS_PREFIXES = [
+// Older lines carry no origin field: a user line that starts like this was written by the
+// harness or by another agent, not typed by a person. The first list starts new work.
+const TRIGGER_PREFIXES = [
   "<task-notification",
+  "<teammate-message",
+  "<cross-session-message",
+];
+const HARNESS_PREFIXES = [
   "<local-command-stdout",
   "<system-reminder",
   "[Request interrupted",
@@ -346,11 +351,8 @@ function userKind(o, text) {
   if (origin && origin !== "human") return "trigger";
   if (o.isMeta) return "other";
   if (origin === "human") return "human";
-  return HARNESS_PREFIXES.some((p) => text.startsWith(p))
-    ? text.startsWith("<task-notification")
-      ? "trigger"
-      : "other"
-    : "human";
+  if (TRIGGER_PREFIXES.some((p) => text.startsWith(p))) return "trigger";
+  return HARNESS_PREFIXES.some((p) => text.startsWith(p)) ? "other" : "human";
 }
 
 function parseClaude(file, { harness, host, win, subagent }) {

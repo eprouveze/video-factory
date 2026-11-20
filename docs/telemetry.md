@@ -88,8 +88,9 @@ generation calls, renders), **overhead** (git, board, memory lookups).
 
 ## How a response is attributed and classed
 
-- **Turn.** A message typed by a person (not a tool result, not a harness notice) and
-  everything after it up to the next one, in the same session.
+- **Turn.** A message typed by a person (not a tool result, a harness notice or a message
+  from another agent) and everything after it up to the next one, in the same session. A
+  session no person typed in is a single turn with no human side.
 - **Project.** A turn belongs to the project when its cwd or git branch matches, or any tool
   call in it does. A turn with no tool calls takes the answer of the previous turn of the
   session. A subagent transcript takes the answer of the turn that spawned it (linked through

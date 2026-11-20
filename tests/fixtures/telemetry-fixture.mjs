@@ -263,6 +263,12 @@ export function buildFixture(root) {
     b.human("13:00:00", "status?"),
     ...b.reply("13:00:30", "b1", U(7, 7, 0, 0, 0), [text("fine")]),
   ]);
+  // a session driven by another agent: its opening message is not a person's
+  const tm = session("sess-team", { cwd: PROJECT, model: "model-b" });
+  writeJsonl(join(hostB, "-work-demo", "sess-team.jsonl"), [
+    tm.prompt("13:30:00", '<teammate-message teammate_id="lead">do the thing</teammate-message>'),
+    ...tm.reply("13:30:10", "t1", U(1, 1, 0, 0, 0), [text("done")]),
+  ]);
   // agy converted to the Claude shape: no ids, no model, no usage
   writeJsonl(join(mirror, "host-b", "agy-converted", "agy-sess-g.jsonl"), [
     {

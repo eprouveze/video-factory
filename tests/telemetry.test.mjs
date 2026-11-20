@@ -50,8 +50,8 @@ test("one row per API response: lines that share a message id and request id are
   // the mirror holds a stale copy of the same session file and a fork that repeats response m1
   assert.equal(fact(r, "m1").length, 1);
   assert.equal(s.sources.duplicate_responses_dropped, 1);
-  assert.equal(s.sources.responses, 21);
-  assert.deepEqual(pick(s.tokens.total), tokens(1465, 392, 20650, 700, 30));
+  assert.equal(s.sources.responses, 22);
+  assert.deepEqual(pick(s.tokens.total), tokens(1466, 393, 20650, 700, 30));
   assert.equal(s.tokens.cache_hit_ratio, 0.9051);
 });
 
@@ -86,7 +86,7 @@ test("a mixed response takes the majority class, and class_order breaks a tie", 
   );
   assert.deepEqual(
     [byClass.overhead.responses, pick(byClass.overhead)],
-    [9, tokens(462, 135, 10150, 400, 10)],
+    [10, tokens(463, 136, 10150, 400, 10)],
   );
 });
 
@@ -147,9 +147,9 @@ test("a subagent inherits the turn that spawned it; without a link its own tool 
 });
 
 test("time: AI per turn, idle before a harness trigger, human gaps capped at 15 minutes", () => {
-  assert.equal(s.time.turns, 9);
+  assert.equal(s.time.turns, 10);
   assert.equal(s.time.human_turns, 7);
-  assert.equal(s.time.ai_s, 227);
+  assert.equal(s.time.ai_s, 237);
   // the wait for a background job is idle, and a hook line at 10:40 does not stretch turn 2
   assert.equal(s.time.ai_idle_s, 780);
   // gaps of 5, 40 and 10 minutes: 5 + 15 + 10 active, 25 away
@@ -198,7 +198,7 @@ test("codex rollouts: per-response records, cached input split out, no double co
   );
   assert.deepEqual(
     [rows["model-b claude-code"].responses, pick(rows["model-b claude-code"])],
-    [3, tokens(77, 14, 0, 400, 0)],
+    [4, tokens(78, 15, 0, 400, 0)],
   );
   // agy logs carry no usage: the responses are counted, the tokens are not invented
   assert.deepEqual(
@@ -358,7 +358,7 @@ test("the CLI prints the same table, and compare lines up a baseline", () => {
     { encoding: "utf8" },
   );
   assert.equal(cmpText, compareSummaries(s, b));
-  assert.match(cmpText, /^sources\.responses\s+21\s+10\s+-11\s+0\.4762$/m);
+  assert.match(cmpText, /^sources\.responses\s+22\s+10\s+-12\s+0\.4545$/m);
   assert.match(
     cmpText,
     /^tokens\.by_class\[tooling\]\.output_tokens\s+20\s+20\s+0\s+1$/m,
