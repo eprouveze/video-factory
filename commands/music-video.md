@@ -26,6 +26,9 @@ with no picture at all.
 - **Story.** One sentence that someone outside the subject understands. The song carries one
   emotional journey; extra layers go to the picture. Put questions to the owner one at a time
   and keep their answers word for word, with the date, in the project's decision record.
+- **GATE 0 (story):** write the story as a short treatment (who wants what, what goes wrong,
+  what it costs, how it ends, and what the picture shows that the song does not say) and work
+  it out with the owner. No lyric is drafted before the owner has approved the story.
 - **Lyrics.** Draft by section (`$P/song/lyrics-v01.txt`, a new file per version). The owner
   approves section by section. A draft is a candidate until they say so.
 - **Style strings.** One text file per style in `$P/song/styles/`. Put what decides the result
