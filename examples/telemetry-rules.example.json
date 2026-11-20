@@ -1,0 +1,89 @@
+{
+  "// about": "Copy to <project>/telemetry/rules.json and edit. Keys that start with // are comments. Schema: docs/telemetry.md",
+
+  "name": "demo",
+
+  "// window": "Only log events inside [from, to) are read. Leave a bound out (or null) for an open end.",
+  "window": { "from": "2026-01-05T00:00:00Z", "to": null },
+
+  "// idle_cap_minutes": "A gap between the end of a turn and the next human message counts as human active time up to this cap; the rest is reported as away.",
+  "idle_cap_minutes": 15,
+
+  "// attribution": "A turn belongs to the project when its cwd or git branch matches, or when any tool call in it mentions one of these. ~/ is also matched as the home directory.",
+  "attribution": {
+    "path_prefixes": ["~/video/projects/demo"],
+    "repos": [],
+    "branches": ["demo-*"],
+    "ids": ["<drive-folder-or-document-id>"]
+  },
+
+  "// class_order": "The classes, in the order that breaks a tie inside a mixed response.",
+  "class_order": ["tooling", "content", "overhead"],
+
+  "// default_class": "Class of a tool call that no rule below matches.",
+  "default_class": "overhead",
+
+  "// classes": "Checked top to bottom, first match wins. A rule matches a tool call when its tool name passes `tools` (if given; a trailing * is a prefix) and, if any of contains / path_prefixes / ids / cwd_prefixes is given, at least one of them hits. Text matchers look at the tool name plus its JSON input.",
+  "classes": [
+    {
+      "name": "plugin-repo",
+      "class": "tooling",
+      "path_prefixes": ["~/Dev/video-factory"],
+      "cwd_prefixes": ["~/Dev/video-factory"]
+    },
+    {
+      "name": "ci",
+      "class": "tooling",
+      "tools": ["Bash"],
+      "contains": ["gh pr ", "gh run ", "npm test"]
+    },
+
+    {
+      "name": "project-files",
+      "class": "content",
+      "path_prefixes": ["~/video/projects/demo"]
+    },
+    {
+      "name": "project-docs",
+      "class": "content",
+      "ids": ["<drive-folder-or-document-id>"]
+    },
+    {
+      "name": "generation",
+      "class": "content",
+      "tools": ["Bash"],
+      "contains": ["providers/clip/", "providers/image/", "take-record.mjs"]
+    },
+    {
+      "name": "render",
+      "class": "content",
+      "tools": ["Bash"],
+      "contains": [
+        "render-manifest.mjs",
+        "render-chunks.sh",
+        "ffmpeg",
+        "ffprobe"
+      ]
+    },
+
+    {
+      "name": "git",
+      "class": "overhead",
+      "tools": ["Bash"],
+      "contains": ["git "]
+    },
+    { "name": "memory", "class": "overhead", "tools": ["mcp__memory__*"] },
+
+    {
+      "name": "in-project-dir",
+      "class": "content",
+      "cwd_prefixes": ["~/video/projects/demo"]
+    }
+  ],
+
+  "// dropped": "Artifacts (paths or ids) that were thrown away. A response whose tool calls touched only these is reported as rework.",
+  "dropped": [],
+
+  "// takes_dirs": "Take-record directories, relative to the project. Default: takes",
+  "takes_dirs": ["takes"]
+}

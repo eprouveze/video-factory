@@ -170,3 +170,7 @@ records + clips, `output/` films and sheets, `manifest.json`.
 
 Throughout: when credit runs out, stop, ask once, then do the free work (timing, overlays,
 B-roll placement) and list what waits on credit.
+
+Telemetry: at each gate run `node scripts/telemetry.mjs run --project $P`, and record what the
+owner did with `node scripts/telemetry.mjs event add --project $P --kind gate|approval|rejection|correction|waiting --note "<their words>"`.
+The numbers come from the logs, never from you (`docs/telemetry.md`).

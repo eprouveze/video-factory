@@ -124,7 +124,8 @@ upstream changes.
 - [Architecture](docs/ARCHITECTURE.md) · [Roadmap & deferred features](docs/ROADMAP.md) ·
   [Component contracts](providers/CONTRACTS.md)
 - [Geometry blockout (3D set) route for consistent stills](docs/blockout-set-route.md) ·
-  [Rough-cut and render checks](docs/rough-cut-tools.md) · [YouTube delivery](docs/youtube-delivery.md)
+  [Rough-cut and render checks](docs/rough-cut-tools.md) · [YouTube delivery](docs/youtube-delivery.md) ·
+  [Project telemetry](docs/telemetry.md)
 
 ## Credits & license
 
