@@ -6,17 +6,24 @@ allowed-tools: Bash, Read
 
 # /video-factory:render
 
-Run the default `compositor` adapter (HyperFrames, or Remotion fallback) over the project's `manifest.json`.
+Run the project's `compositor` adapter over its `manifest.json`. The manifest's `compositor` field
+picks it: `remotion` is the default (`providers/providers.json`, `scripts/render-manifest.mjs`) and
+`hyperframes` is experimental. Graphics and the through-line render in Remotion only
+(`validate-manifest.mjs` warns otherwise).
 
 ## Steps
 1. Resolve the project dir and the format(s) (from `$ARGUMENTS`, else every entry in the
    manifest's `format`).
-2. For each format, call the active compositor adapter (default: HyperFrames):
+2. For each format, render with the manifest's compositor (default: Remotion):
+   ```bash
+   node scripts/render-manifest.mjs <proj> --format 16:9 --out <proj>/output/video-16x9.mp4
+   ```
+   or call the adapter directly:
    ```bash
    echo '{"manifest_path":"<proj>/manifest.json","format":"16:9","out_path":"<proj>/output/video-16x9.mp4"}' \
-     | providers/compositor/hyperframes.mjs
+     | providers/compositor/remotion.mjs
    ```
-   *(To use the legacy Remotion compositor instead, pipe into `providers/compositor/remotion.mjs`)*
+   *(Only when the manifest sets `"compositor": "hyperframes"`, pipe into `providers/compositor/hyperframes.mjs` instead.)*
 
    The compositor times each scene from the **measured** `duration_ms` (falls back to
    `duration_estimate_s` for un-produced/zero-key scenes), layers audio + word-timed captions,
