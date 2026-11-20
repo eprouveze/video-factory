@@ -2,6 +2,9 @@
 // clip adapter — MiniMax H3 via the v2 video generation API. Contract: providers/CONTRACTS.md (clip).
 // stdin  {brief, aspect?, duration_s?, ref_frame?, out_path}
 // stdout {clip_path, duration_ms, cost_usd?}
+// Optional request fields: ref_frame (first frame), ref_images[] + ref_audio[] (reference mode).
+// Reference mode cannot be mixed with a first frame; images must have w/h in [0.4, 2.5]; audio must be .wav.
+// These gates fail before the API call, so a bad request is never billed.
 // Key from env MINIMAX_API_KEY or config MINIMAX_API_KEY (Authorization: Bearer header) — never args.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve, join, extname } from "node:path";
@@ -30,6 +33,62 @@ const PRICE_PER_SECOND = {
   "MiniMax-H3-Lite": { "768P": 0.04, "480P": 0.025 },
   "MiniMax-H3-Max": { "768P": 0.08, "480P": 0.05 },
 };
+
+export const REF_IMAGE_RATIO = [0.4, 2.5];
+
+// Pixel size from the file header: PNG, JPEG, WebP. Returns null when unreadable.
+export function imageSize(buf) {
+  if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47)
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      while (i + 1 < buf.length && buf[i + 1] === 0xff) i++; // repeated 0xFF padding
+      const m = buf[i + 1];
+      if (m === 0x00 || m === 0x01 || (m >= 0xd0 && m <= 0xd8)) {
+        i += 2; // stuffed byte or marker without a length
+        continue;
+      }
+      if (m >= 0xc0 && m <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(m))
+        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+      i += 2 + buf.readUInt16BE(i + 2);
+    }
+    return null;
+  }
+  if (buf.length > 30 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") {
+    const k = buf.toString("ascii", 12, 16);
+    if (k === "VP8X")
+      return { w: 1 + buf.readUIntLE(24, 3), h: 1 + buf.readUIntLE(27, 3) };
+    if (k === "VP8 ")
+      return { w: buf.readUInt16LE(26) & 0x3fff, h: buf.readUInt16LE(28) & 0x3fff };
+    if (k === "VP8L") {
+      const b = buf.readUInt32LE(21);
+      return { w: (b & 0x3fff) + 1, h: ((b >> 14) & 0x3fff) + 1 };
+    }
+  }
+  return null;
+}
+
+export function checkRefImage(path) {
+  if (!existsSync(resolve(path))) throw new Error(`reference image not found: ${path}`);
+  const size = imageSize(readFileSync(resolve(path)));
+  if (!size || !size.h) throw new Error(`cannot read reference image size: ${path}`);
+  const r = size.w / size.h;
+  if (r < REF_IMAGE_RATIO[0] || r > REF_IMAGE_RATIO[1])
+    throw new Error(
+      `reference image aspect ratio ${r.toFixed(2)} outside [${REF_IMAGE_RATIO.join(", ")}]: ${path}`,
+    );
+}
+
+export function checkRefAudio(path) {
+  if (extname(path).toLowerCase() !== ".wav")
+    throw new Error(`reference audio must be .wav: ${path}`);
+  if (!existsSync(resolve(path))) throw new Error(`reference audio not found: ${path}`);
+}
 
 export function clampDuration(value, model = "MiniMax-H3") {
   const requested = Number(value);
@@ -75,6 +134,33 @@ export function buildMinimaxRequest(req, cfg = {}) {
       role: "first_frame",
     });
   }
+  const refImages = req.ref_images || [];
+  const refAudio = req.ref_audio || [];
+  if (req.ref_frame && (refImages.length || refAudio.length))
+    throw new Error(
+      "H3 refuses a first frame together with reference image/audio: choose one mode",
+    );
+  for (const p of refImages) {
+    checkRefImage(p);
+    const mime = REF_FRAME_MIME[extname(p).toLowerCase()] || "image/png";
+    content.push({
+      type: "image_url",
+      image_url: { url: `data:${mime};base64,${readFileSync(resolve(p)).toString("base64")}` },
+      role: "reference_image",
+    });
+  }
+  for (const p of refAudio) {
+    checkRefAudio(p);
+    content.push({
+      type: "audio_url",
+      audio_url: { url: `data:audio/wav;base64,${readFileSync(resolve(p)).toString("base64")}` },
+      role: "reference_audio",
+    });
+  }
+  // MiniMax-H3-Lite does not support ratio "adaptive" for reference requests (vendor doc,
+  // video-generation-v2-create): it needs a concrete ratio. A first frame fixes the ratio itself.
+  const hasRef = refImages.length || refAudio.length;
+  const adaptive = req.ref_frame || (hasRef && model !== "MiniMax-H3-Lite");
   return {
     url: `${BASE}/v2/video_generation`,
     body: {
@@ -82,7 +168,7 @@ export function buildMinimaxRequest(req, cfg = {}) {
       content,
       resolution: cfg.clip?.minimax_resolution || "768P",
       duration: clampDuration(req.duration_s, model),
-      ratio: req.ref_frame ? "adaptive" : mapRatio(req.aspect),
+      ratio: adaptive ? "adaptive" : mapRatio(req.aspect),
     },
   };
 }
@@ -158,7 +244,13 @@ async function main() {
     return j;
   }
 
-  const { url, body } = buildMinimaxRequest(req, cfg);
+  let built;
+  try {
+    built = buildMinimaxRequest(req, cfg);
+  } catch (e) {
+    fail(e.message, 2);
+  }
+  const { url, body } = built;
   const created = await call("POST", url, body);
   const taskId = created.task_id;
   if (!taskId)

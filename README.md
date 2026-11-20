@@ -85,7 +85,12 @@ record per take, at most 3 per shot), lip-sync measured against the lead-vocal s
 on the beat grid, overlays, a resumable chunked build with the master audio muxed back
 bit-identical, QA and subtitles, with a human gate before every paid call. Its helpers are
 `scripts/take-record.mjs`, `shot-table.mjs`, `lipsync-check.py`, `mux-original-audio.sh`,
-`render-chunks.sh`, `contact-sheet.sh` and `srt-from-words.mjs`.
+`render-chunks.sh`, `contact-sheet.sh` and `srt-from-words.mjs`. QA and delivery helpers:
+`stray_frame_check.py` (1-2 frame shots at joins), `roughcut_review.py` and `roughcut_align.py`
+(clip review strips, and putting silent clips on the music), and for YouTube `srt_to_srv3.py`,
+`make_fr_captions.py`, `yt_auth.py` and `yt_upload.py` (private by default, credentials from the
+environment). For shots that share a set, see the 3D blockout route in
+[docs/blockout-set-route.md](docs/blockout-set-route.md).
 
 ## What each tier needs
 
@@ -94,11 +99,16 @@ bit-identical, QA and subtitles, with a human gate before every paid call. Its h
 | **Core** | code-animated scenes, multi-format render, looks (ffmpeg), `say` voice | ✅ just Node + ffmpeg |
 | Voice | natural narration + word-timed captions | `ELEVENLABS_API_KEY` |
 | Images | generative stills, reference-frame lock | `GEMINI_API_KEY` (default) or `OPENAI_API_KEY` (gpt-image) |
-| Clips (b-roll) | generative video | `GEMINI_API_KEY` (default), `MINIMAX_API_KEY` or `KLING_API_KEY` |
+| Clips (b-roll) | generative video | `GEMINI_API_KEY` (default, Omni), `MINIMAX_API_KEY`, `OPENROUTER_API_KEY` or `KLING_API_KEY` |
 | Captions (precise) | best word timings | `ELEVENLABS_API_KEY` (Scribe, default) or `OPENAI_API_KEY` (whisper-1) |
 | Music + SFX | score + sound design | `ELEVENLABS_API_KEY` |
 | Avatar | your-own-avatar talking head | planned — adapters not yet written |
 | Premium finish | DaVinci grade / HDR / upscale | Resolve Studio box (deferred) |
+
+The manifest's `compositor` field picks the renderer (`remotion`, the default, or `hyperframes`).
+`providers/compositor/hyperframes.mjs` is marked experimental in `providers/providers.json`
+(HTML5 + GSAP, needs `npx hyperframes`); it lays out title cards, stills, captions and audio and has
+no code for the 12 graphic kinds, so keep Remotion for plans that rely on them.
 
 Secrets live only in the gitignored `.video-factory/config.json` or your shell env — never in
 the repo.
@@ -113,6 +123,8 @@ upstream changes.
 ## Docs
 - [Architecture](docs/ARCHITECTURE.md) · [Roadmap & deferred features](docs/ROADMAP.md) ·
   [Component contracts](providers/CONTRACTS.md)
+- [Geometry blockout (3D set) route for consistent stills](docs/blockout-set-route.md) ·
+  [Rough-cut and render checks](docs/rough-cut-tools.md) · [YouTube delivery](docs/youtube-delivery.md)
 
 ## Credits & license
 
