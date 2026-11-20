@@ -47,7 +47,12 @@ export function imageSize(buf) {
         i++;
         continue;
       }
+      while (i + 1 < buf.length && buf[i + 1] === 0xff) i++; // repeated 0xFF padding
       const m = buf[i + 1];
+      if (m === 0x00 || m === 0x01 || (m >= 0xd0 && m <= 0xd8)) {
+        i += 2; // stuffed byte or marker without a length
+        continue;
+      }
       if (m >= 0xc0 && m <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(m))
         return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
       i += 2 + buf.readUInt16BE(i + 2);
@@ -152,7 +157,10 @@ export function buildMinimaxRequest(req, cfg = {}) {
       role: "reference_audio",
     });
   }
-  const adaptive = req.ref_frame || refImages.length || refAudio.length;
+  // MiniMax-H3-Lite does not support ratio "adaptive" for reference requests (vendor doc,
+  // video-generation-v2-create): it needs a concrete ratio. A first frame fixes the ratio itself.
+  const hasRef = refImages.length || refAudio.length;
+  const adaptive = req.ref_frame || (hasRef && model !== "MiniMax-H3-Lite");
   return {
     url: `${BASE}/v2/video_generation`,
     body: {

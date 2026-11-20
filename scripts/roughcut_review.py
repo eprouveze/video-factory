@@ -29,7 +29,32 @@ a = ap.parse_args()
 OUT = a.dir
 os.makedirs(os.path.join(OUT, "review"), exist_ok=True)
 jl = os.path.join(OUT, "review", a.tag + ".jsonl")
-done = {json.loads(l)["cut"] for l in open(jl)} if os.path.exists(jl) else set()
+
+
+def load_done(path):
+    """Finished cuts from the jsonl. An incomplete final line (a crash mid-append) is dropped;
+    a malformed line anywhere else is an error, never silently skipped."""
+    if not os.path.exists(path):
+        return set()
+    raw = open(path).read()
+    lines = raw.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    out, keep = set(), []
+    for k, l in enumerate(lines):
+        try:
+            out.add(json.loads(l)["cut"])
+            keep.append(l)
+        except (ValueError, KeyError):
+            if k != len(lines) - 1 or raw.endswith("\n"):
+                sys.exit(f"{path} line {k + 1} is malformed; fix or remove it before resuming")
+            print(f"dropping incomplete final record in {path}", file=sys.stderr)
+    open(path, "w").write("".join(l + "\n" for l in keep))
+    return out
+
+
+done = load_done(jl)
+failed = 0
 for it in json.load(open(os.path.join(OUT, "manifest.json"))):
     if it["mode"] not in ("lip", "ref", "first", "pair") or it["cut"] in done:
         continue
@@ -42,11 +67,18 @@ for it in json.load(open(os.path.join(OUT, "manifest.json"))):
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", clip],
         capture_output=True, text=True).stdout or 0)
     strip = os.path.join(OUT, "review", f"{it['cut']}-{a.tag}.jpg")
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", clip, "-vf",
-                    f"fps=5/{max(d, 0.1):.3f},scale=384:-2,tile=5x1", "-frames:v", "1", strip])
+    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", clip, "-vf",
+                        f"fps=5/{max(d, 0.1):.3f},scale=384:-2,tile=5x1", "-frames:v", "1", strip],
+                       capture_output=True, text=True)
+    if r.returncode != 0 or not os.path.exists(strip) or os.path.getsize(strip) == 0:
+        print(f"{it['cut']}: strip failed ({r.stderr.strip()[-200:]}); not recorded, will retry", file=sys.stderr)
+        failed += 1
+        continue
     rec = {"cut": it["cut"], "tag": a.tag, "mode": it["mode"], "cut_dur": it["dur"],
            "clip_dur": round(d, 2), "long_enough": d >= it["dur"]}
-    if it["mode"] == "lip":
+    if it["mode"] == "lip" and not it.get("ref_audio"):
+        rec["lipsync"] = {"corr": None, "note": "no ref_audio in manifest entry; lip-sync not measured"}
+    elif it["mode"] == "lip":
         cmd = [sys.executable, os.path.join(HERE, "lipsync-check.py"), clip, os.path.join(OUT, it["ref_audio"])]
         if a.face_model:
             cmd += ["--model", a.face_model]
@@ -57,3 +89,4 @@ for it in json.load(open(os.path.join(OUT, "manifest.json"))):
             rec["lipsync"] = {"corr": None, "note": "check failed: " + r.stderr[-200:]}
     open(jl, "a").write(json.dumps(rec) + "\n")
     print(rec, flush=True)
+sys.exit(1 if failed else 0)

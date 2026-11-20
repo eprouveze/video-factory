@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -67,12 +68,23 @@ if a.srt and a.srt_allowlist:
 
 c = json.load(open(need("YOUTUBE_OAUTH_CLIENT_JSON_FILE")))
 c = c.get("web") or c.get("installed") or c
-tok = json.load(req("https://oauth2.googleapis.com/token", urllib.parse.urlencode(dict(
-    client_id=c["client_id"], client_secret=c["client_secret"], grant_type="refresh_token",
-    refresh_token=need("YOUTUBE_OAUTH_REFRESH_TOKEN"))).encode()))
-H = {"Authorization": "Bearer " + tok["access_token"]}
+REFRESH = need("YOUTUBE_OAUTH_REFRESH_TOKEN")
+_tok = {"access": None, "exp": 0.0}
+
+
+def auth():
+    """Authorization header; the access token is refreshed when it has under 2 minutes left."""
+    if time.time() > _tok["exp"] - 120:
+        t = json.load(req("https://oauth2.googleapis.com/token", urllib.parse.urlencode(dict(
+            client_id=c["client_id"], client_secret=c["client_secret"], grant_type="refresh_token",
+            refresh_token=REFRESH)).encode()))
+        _tok["access"] = t["access_token"]
+        _tok["exp"] = time.time() + float(t.get("expires_in", 3600))
+    return {"Authorization": "Bearer " + _tok["access"]}
+
+
 if a.channel_id:
-    ids = [i["id"] for i in json.load(req("https://www.googleapis.com/youtube/v3/channels?part=id&mine=true", headers=H)).get("items", [])]
+    ids = [i["id"] for i in json.load(req("https://www.googleapis.com/youtube/v3/channels?part=id&mine=true", headers=auth())).get("items", [])]
     if a.channel_id not in ids:
         sys.exit(f"token is not for channel {a.channel_id} (got {ids}): refusing")
 
@@ -83,13 +95,13 @@ def add_caption(video_id):
             + json.dumps({"snippet": {"videoId": video_id, "language": a.srt_lang, "name": a.srt_name, "isDraft": False}})
             + f"\r\n--{bnd}\r\nContent-Type: application/octet-stream\r\n\r\n").encode() + open(a.srt, "rb").read() + f"\r\n--{bnd}--\r\n".encode()
     cap = json.load(req("https://www.googleapis.com/upload/youtube/v3/captions?uploadType=multipart&part=snippet", body,
-                        {**H, "Content-Type": f"multipart/related; boundary={bnd}"}))
+                        {**auth(), "Content-Type": f"multipart/related; boundary={bnd}"}))
     print("CAPTION", cap["id"], cap["snippet"]["language"], cap["snippet"]["name"])
 
 
 def set_thumbnail(video_id):
     req(f"https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={video_id}", open(a.thumbnail, "rb").read(),
-        {**H, "Content-Type": "image/jpeg"})
+        {**auth(), "Content-Type": "image/jpeg"})
     print("THUMBNAIL set on", video_id)
 
 
@@ -105,26 +117,56 @@ meta = {"snippet": {"title": a.title, "description": open(a.description_file).re
         "status": {"privacyStatus": a.privacy, "selfDeclaredMadeForKids": False, "containsSyntheticMedia": not a.not_synthetic}}
 size = os.path.getsize(a.video)
 init = req("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
-           json.dumps(meta).encode(), {**H, "Content-Type": "application/json; charset=UTF-8",
+           json.dumps(meta).encode(), {**auth(), "Content-Type": "application/json; charset=UTF-8",
                                        "X-Upload-Content-Type": "video/mp4", "X-Upload-Content-Length": str(size)})
 loc = init.headers["Location"]
 CH = 64 * 1024 * 1024
+MAX_RETRIES = 6
+
+
+def put(data, content_range):
+    """One PUT on the upload session. Returns ("done", json) | ("resume", next_offset) | ("retry", None)."""
+    hdr = {**auth(), "Content-Length": str(len(data)), "Content-Range": content_range, "Content-Type": "video/mp4"}
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(loc, data=data, method="PUT", headers=hdr), timeout=600)
+        return "done", json.load(r)
+    except urllib.error.HTTPError as e:
+        if e.code == 308:
+            rng = e.headers.get("Range")
+            return "resume", int(rng.split("-")[1]) + 1 if rng else 0
+        if e.code in (500, 502, 503, 504):
+            return "retry", None
+        sys.exit(f"upload failed HTTP {e.code}: {e.read().decode()[:600]}")
+    except (urllib.error.URLError, TimeoutError, ConnectionError, OSError):
+        return "retry", None
+
+
+vid = None
 with open(a.video, "rb") as f:
     off = 0
-    while off < size:
+    tries = 0
+    while vid is None:
         f.seek(off)
         b = f.read(CH)
-        end = off + len(b) - 1
-        r = urllib.request.Request(loc, data=b, method="PUT", headers={**H, "Content-Length": str(len(b)),
-                                                                       "Content-Range": f"bytes {off}-{end}/{size}"})
-        try:
-            vid = json.load(urllib.request.urlopen(r, timeout=600))
-            off = size
-        except urllib.error.HTTPError as e:
-            if e.code != 308:
-                sys.exit(f"upload failed HTTP {e.code}: {e.read().decode()[:600]}")
-            rng = e.headers.get("Range")
-            off = int(rng.split("-")[1]) + 1 if rng else 0
+        if tries == 0 and off < size:
+            kind, val = put(b, f"bytes {off}-{off + len(b) - 1}/{size}")
+        else:  # after a failure, ask the session how much it holds (resumable-upload status query)
+            kind, val = put(b"", f"bytes */{size}")
+            if kind == "resume" and val is not None and val != off:
+                off = val
+                tries = 0
+                continue
+            if kind == "resume":  # server holds exactly what we sent: send the chunk again
+                kind, val = put(b, f"bytes {off}-{off + len(b) - 1}/{size}")
+        if kind == "done":
+            vid = val
+        elif kind == "resume":
+            off, tries = val, 0
+        else:
+            tries += 1
+            if tries > MAX_RETRIES:
+                sys.exit(f"upload kept failing at {off * 100 // size}%; the resumable session URL is lost on exit, start again")
+            time.sleep(min(60, 2 ** tries))
         print(f"uploaded {min(off, size) * 100 // size}%", flush=True)
 print("VIDEO", vid["id"], "https://youtu.be/" + vid["id"], "privacy", vid["status"]["privacyStatus"])
 if a.thumbnail:

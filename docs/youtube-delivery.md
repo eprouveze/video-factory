@@ -25,7 +25,7 @@ No token or client secret lives in the repo or in arguments.
 
 1. Create an OAuth client in Google Cloud (YouTube Data API v3), download the client JSON, set
    `YOUTUBE_OAUTH_CLIENT_JSON_FILE` to its path.
-2. One-time consent: `python3 scripts/yt_auth.py --client-json "$YOUTUBE_OAUTH_CLIENT_JSON_FILE" --token-out ~/.config/vf/yt-refresh.txt --channel-id UC...`
+2. One-time consent (create the directory first: `mkdir -p -m 700 ~/.config/vf`): `python3 scripts/yt_auth.py --client-json "$YOUTUBE_OAUTH_CLIENT_JSON_FILE" --token-out ~/.config/vf/yt-refresh.txt --channel-id UC...`
    (on a remote machine, forward the port: `ssh -t -L 8080:localhost:8080 HOST ...`). The refresh token
    is written with mode 0600 and never printed. Keep one token per channel.
 3. Export it for uploads: `export YOUTUBE_OAUTH_REFRESH_TOKEN="$(cat ~/.config/vf/yt-refresh.txt)"`.
@@ -41,3 +41,7 @@ Private by default (`--privacy unlisted|public` to change), category Music, not 
 synthetic media declared. With `--channel-id` (or `YOUTUBE_CHANNEL_ID`) the token is checked against
 the channel and the upload is refused on a mismatch. `--only-caption VIDEO_ID --srt F` adds a caption
 track later; `--only-thumbnail VIDEO_ID --thumbnail F.jpg` sets a thumbnail.
+
+The upload is resumable: the access token is refreshed before it expires, and a 5xx response or a
+dropped connection is retried with backoff after asking the upload session how many bytes it holds.
+The session URL is not saved, so if the script exits after repeated failures, start the upload again.

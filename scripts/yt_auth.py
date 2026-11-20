@@ -78,6 +78,7 @@ print("Authorized channel:", ", ".join(i["snippet"]["title"] for i in ch.get("it
 if a.channel_id and a.channel_id not in [i["id"] for i in ch.get("items", [])]:
     sys.exit("Not the expected channel: nothing saved. Re-run and pick the right channel in the account chooser.")
 fd = os.open(a.token_out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+os.fchmod(fd, 0o600)  # os.open's mode only applies to a newly created file
 with os.fdopen(fd, "w") as f:
     f.write(rt)
 print(f"refresh token written to {a.token_out} (mode 0600); export it as YOUTUBE_OAUTH_REFRESH_TOKEN for yt_upload.py")

@@ -21,8 +21,10 @@ NB = " "
 
 
 def typo_fr(s):
-    s = re.sub(r" ([:;?!»])", NB + r"\1", s)
-    return s.replace("« ", "«" + NB)
+    s = re.sub(r"[ \u00a0]+([:;?!»])", NB + r"\1", s)  # normalise existing spaces
+    s = re.sub(r"(?<=[^\s\u00a0;?!])([;?!»])", NB + r"\1", s)  # insert missing ones (not inside "?!")
+    s = re.sub(r"(?<=[^\s\u00a0])(:)(?=\s|$)", NB + r"\1", s)  # "Bonjour:" but not "12:30"
+    return re.sub(r"«[ \u00a0]*(?=\S)", "«" + NB, s)
 
 
 TYPO = {"fr": typo_fr}
@@ -46,10 +48,11 @@ for i, (c, t) in enumerate(zip(cues, tr), 1):
     times, first = lines[1], lines[2]
     if first.startswith("[") != t.startswith("[") or first.startswith("♪") != t.startswith("♪"):
         bad.append(f"cue {i}: kind differs ({first!r} / {t!r})")
-    for ln in t.split("\n"):
+    out = fix(t)
+    for ln in out.split("\n"):
         if len(ln) > a.max_chars:
             bad.append(f"cue {i}: {len(ln)} chars: {ln}")
-    blocks.append(f"{i}\n{times}\n{fix(t)}\n")
+    blocks.append(f"{i}\n{times}\n{out}\n")
 if bad:
     sys.exit("\n".join(bad))
 open(a.out, "w", encoding="utf-8").write("\n".join(blocks))

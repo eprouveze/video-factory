@@ -15,6 +15,9 @@ Small scripts that sit next to the freezedetect and blackdetect checks in
 python3 scripts/stray_frame_check.py film.mp4 [--max-frames 2] [--threshold 12]
 ```
 
+Frames are decoded in passthrough mode, so lengths count source frames (also for variable frame
+rate) and times come from source timestamps. Exit 0 clean, 1 stray shot found, 2 analysis failed.
+
 A freeze or black check does not see a one-frame shot. Typical causes: an insert entered as
 start + duration, landing one frame short of the next insert; a section spliced in by time instead of
 by frame. Run it on every render after a splice, retime or insert change, before showing the film.
@@ -35,7 +38,9 @@ python3 scripts/roughcut_align.py $P/audio/master.wav --dir $P/rough
 ```
 
 `roughcut_review.py` appends one JSON line per clip to `review/<tag>.jsonl` as it goes, so a crash
-keeps finished work. `roughcut_align.py` keeps an offset only if it beats offset 0 by 0.05 in
+keeps finished work (an incomplete last line is dropped on resume; a malformed line elsewhere stops
+the run). A cut whose strip fails to build is not recorded, is retried on the next run, and makes the
+script exit 1. A `lip` entry without `ref_audio` is reviewed but its lip-sync is recorded as not measured. `roughcut_align.py` keeps an offset only if it beats offset 0 by 0.05 in
 correlation, never touches lip-synced clips, and writes `offset`, `align_corr`, `align_corr0` back
 into `selection.json`. The lip-sync figure is the existing `scripts/lipsync-check.py`; the numbers are
 reporting lines, not thresholds, and never replace watching the clip.

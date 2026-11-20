@@ -173,3 +173,23 @@ test("minimax gate: first frame cannot mix with reference mode", () => {
     /choose one mode/,
   );
 });
+
+test("minimax reads a JPEG whose marker is preceded by 0xFF padding", () => {
+  const pad = Buffer.from([0xff, 0xd8, 0xff, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x02, 0x40, 0x04, 0x00]);
+  assert.deepEqual(imageSize(Buffer.concat([pad, Buffer.alloc(20)])), { w: 1024, h: 576 });
+  const plain = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x02, 0x40, 0x04, 0x00]);
+  assert.deepEqual(imageSize(Buffer.concat([plain, Buffer.alloc(20)])), { w: 1024, h: 576 });
+});
+
+test("minimax H3-Lite reference requests use a concrete ratio, other models adaptive", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const ref = join(dir, "r.png");
+  writeFileSync(ref, png(1024, 576));
+  const lite = buildMinimaxRequest(
+    { brief: "x", aspect: "9:16", ref_images: [ref] },
+    { clip: { minimax_model: "MiniMax-H3-Lite" } },
+  );
+  assert.equal(lite.body.ratio, "9:16");
+  const std = buildMinimaxRequest({ brief: "x", aspect: "9:16", ref_images: [ref] });
+  assert.equal(std.body.ratio, "adaptive");
+});
