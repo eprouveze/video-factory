@@ -1,5 +1,5 @@
 ---
-description: Make a song-led music video end-to-end — lock the song, measure it, cut to it, animatic on the real audio, then takes, lip-sync, B-roll, overlays, build, QA, subtitles. Human gates before every paid call.
+description: Make a song-led music video end-to-end — write and audition the song if there is none, lock it, measure it, cut to it, animatic on the real audio, then takes, lip-sync, B-roll, overlays, build, QA, subtitles. Human gates before every paid call.
 argument-hint: "[project-dir]   (scaffold one first with /video-factory:new music-video)"
 allowed-tools: Bash, Read, Write, Edit, Task
 ---
@@ -13,9 +13,47 @@ human gate.** A gate is a question put to the person who owns the project; silen
 approval, a candidate is never called approved, and you never approve on their behalf.
 Quote their words in the notes instead of paraphrasing them into a decision.
 
-Project layout used below (`$P` = the project dir): `audio/` master + stems, `timing/`
+Project layout used below (`$P` = the project dir): `song/` lyrics, style strings and
+audition records, `audio/` master + stems, `timing/`
 words, lines, beats, `refs/` start stills, `prompts/` one text file per take, `takes/`
 records + clips, `output/` films and sheets, `manifest.json`.
+
+## Phase 0 — Story, lyrics and song auditions  (only when no song exists yet)
+Skip to Phase 1 if a finished song is handed to you. Otherwise the song and the film are
+invented together here, before anything is measured: a verse is decided with the picture it
+calls for, and a picture may ask for a line, a riff or a silence. The song still has to work
+with no picture at all.
+- **Story.** One sentence that someone outside the subject understands. The song carries one
+  emotional journey; extra layers go to the picture. Put questions to the owner one at a time
+  and keep their answers word for word, with the date, in the project's decision record.
+- **GATE 0 (story):** write the story as a short treatment (who wants what, what goes wrong,
+  what it costs, how it ends, and what the picture shows that the song does not say) and work
+  it out with the owner. No lyric is drafted before the owner has approved the story.
+- **GATE 0r (independent review of the approved story):** before any lyric, have several
+  models from different families review the approved treatment: story strength (score and the
+  biggest fix), fit to a song, fit to video (shot count, what is over-stuffed, the must-have
+  shots), hook quality with alternatives, what the viewer learns, alternative ideas, anything
+  else. Give the reviewers the story only, never lyrics or draft lines: they pull the review
+  away from the story. Show the synthesis to the owner. The owner decides which changes to take; re-approve
+  the treatment if it changed. Only then draft lyrics.
+- **Lyrics.** Draft by section (`$P/song/lyrics-v01.txt`, a new file per version). The owner
+  approves section by section. A draft is a candidate until they say so.
+- **Style strings.** One text file per style in `$P/song/styles/`. Put what decides the result
+  (voice type first) in the opening words: a generator cuts what exceeds its limit, and a lost
+  word can change the singer. Check every file before a run:
+  `node scripts/song-style-lint.mjs $P/song/styles/*.txt --max 1000 --must-lead "<voice term>"`.
+  A reference track is inspiration: describe it by measured tempo and instrumentation, never
+  by artist or title, and do not copy its key and tempo together.
+- **Audition plan.** Fewest runs that answer the question: all styles with one voice, then the
+  voices on the style that won. Show the number of runs and their cost.
+- **GATE 0a (per run):** the owner approves each generation run. Read the balance first.
+- **Record every take** as one line in `$P/song/auditions.jsonl`: lyrics file, style file,
+  generator and served model, take id, cost, and the owner's verdict in their words. Keep the
+  raw download untouched (some formats carry a line-timing track that a re-encode destroys).
+- **Check before the owner listens:** duration, every section present once (generators repeat
+  a bridge or a chorus), words per minute against the plan, the voice that was asked for.
+- **GATE 0b:** the owner picks the song by ear. A favourite is not a master. Cuts and inserts
+  are new files made from the pick; the result goes to Phase 1.
 
 ## Phase 1 — Song and master audio locked  (free)
 1. Confirm the song is chosen and the master is final. The master is never edited after this
