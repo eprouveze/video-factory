@@ -93,13 +93,17 @@ export function buildMusicManifest({ edl, audioDurationMs, beats = null, section
     }
 
     const secMatch = validSections.find((s) => inMs >= s.in_ms && inMs < s.out_ms);
+    const shotMeta = {
+      ...(source === "image" ? { motion: shot.motion || "push" } : {}),
+      ...(shot.move ? { move: shot.move } : {}),
+    };
     const visual =
       source === "placeholder"
         ? { source: "placeholder" }
         : {
             source,
             asset,
-            ...(source === "image" ? { shot: { motion: shot.motion || "push" } } : {}),
+            ...(Object.keys(shotMeta).length ? { shot: shotMeta } : {}),
           };
 
     return {

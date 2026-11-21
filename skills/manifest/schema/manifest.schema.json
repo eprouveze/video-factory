@@ -313,7 +313,11 @@
               "properties": {
                 "size": { "enum": ["wide", "medium", "close"] },
                 "angle": { "enum": ["eye", "low", "high"] },
-                "motion": { "enum": ["static", "push", "handheld", "pan"] }
+                "motion": { "enum": ["static", "push", "handheld", "pan"] },
+                "move": {
+                  "type": "string",
+                  "description": "Camera movement slug or ID from skills/camera-movements (46 moves across Pan/Tilt, Zoom/Lens, Dolly/Track, Physical Moves, Human Camera, Drone/Crane, Specials)."
+                }
               }
             }
           }

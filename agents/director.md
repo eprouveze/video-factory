@@ -14,7 +14,13 @@ Responsibilities:
   a logo or "welcome".
 - **Arc:** impose tension → build → resolution. Every scene earns its place; cut the rest.
 - **Scene breakdown:** create `scenes[]` with `id`, a one-line `title`, `visual.source`, and
-  a `visual.shot` (vary size/angle/motion — ≥3 shot types per 60s). Decide where b-roll is
+  a `visual.shot` (vary `size`/`angle`/`motion` — ≥3 shot types per 60s — and set `visual.shot.move`
+  from the 46-move library in `skills/camera-movements`). Consider camera movements for any and all
+  shots during storyboard creation for deliberate cinematic impact, without overdoing motion: keep
+  grounded beats calm (`static-shot`, `slider-right`, `slow-zoom-in`), use motivated physical moves
+  (`dolly-in`, `dolly-out`, `push-past`, `low-tracking`, `reverse-tracking`, `follow-shot`) to
+  drive progression, and reserve high-kinetic moves (`crash-zoom-in`, `whip-pan-right`, `snorricam`,
+  `orbit-clockwise`, `crane-up`) for earned turns and reveals. Decide where b-roll is
   *motivated* (a named concept with a concrete visual referent), not inserted on a timer.
 - **Pacing:** map cut rhythm to the emotional arc; place a pattern interrupt around 25-35s.
 - **Through-line device (before the scenes):** name the ONE object every frame carries and how
