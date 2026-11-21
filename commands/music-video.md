@@ -38,6 +38,17 @@ with no picture at all.
   the treatment if it changed. Only then draft lyrics.
 - **Lyrics.** Draft by section (`$P/song/lyrics-v01.txt`, a new file per version). The owner
   approves section by section. A draft is a candidate until they say so.
+- **Lyric form.** Write in fragments of two to five words cut at the beat, with lists, counts
+  and bracketed call-and-response; long sentences do not sing. Aim for three or four strong
+  stresses per line. Verses set up, the chorus pays off and stays plain and repeated. An odd
+  line count or a short last line leaves a section unresolved; even, equal lines resolve it.
+- **Rough cut early, with the draft lyrics.** As soon as a candidate draft exists, ask the owner
+  for one cheap run with those lyrics, the style and the exclusions. Listening catches what
+  reading does not: total length against the story's planned duration, an action with no music
+  under it, a mispronounced word. A theme-only run tests the sound, not the lyrics. Some
+  generators take style and exclusion fields only alongside your own lyrics; a description-only
+  run has to fold them into the description. In the copy sent to the generator, spell words the
+  way they must be sung (keep the written form everywhere else) and record the fix.
 - **Style strings.** One text file per style in `$P/song/styles/`. Put what decides the result
   (voice type first) in the opening words: a generator cuts what exceeds its limit, and a lost
   word can change the singer. Check every file before a run:
