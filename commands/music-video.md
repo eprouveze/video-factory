@@ -137,7 +137,9 @@ with no picture at all.
        is outside [0.4, 2.5] (a wide eye crop at 2.61 fails the whole task), reference audio that is
        not `.wav`, and a first frame mixed with reference inputs.
     6. Gate the file: `node scripts/accept-clip.mjs` (container, aspect, duration).
-    7. Set the verdict: `node scripts/take-record.mjs set --dir $P/takes --shot S012 --take 1 --verdict usable|redo|missing`.
+    7. Set the verdict: `node scripts/take-record.mjs set --dir $P/takes --shot S012 --take 1 --verdict usable|redo|missing|dropped [--reason taste|continuity|technical|cost]`.
+       A `redo` or `dropped` needs the reason: ask the owner for that one tap, never fill it in yourself.
+       A call that failed or was blocked gets a record too (`write ... --status failed|safety_block`).
 12. **At most 3 takes per shot.** A 4th needs the owner's go for that shot (`--allow-extra`);
     a failed shot keeps its start still and the verdict `redo` or `missing`.
 - **GATE 7 (per shot or batch):** the owner picks the takes by eye.
@@ -208,3 +210,9 @@ with no picture at all.
 
 Throughout: when credit runs out, stop, ask once, then do the free work (timing, overlays,
 B-roll placement) and list what waits on credit.
+
+Telemetry: at each gate run `node scripts/telemetry.mjs run --project $P`, and record what the
+owner did with `node scripts/telemetry.mjs event add --project $P --kind gate|approval|rejection|correction|waiting --note "<their words>"`.
+At each gate also ask the owner for one quality tap, 1 to 5, and record it:
+`node scripts/telemetry.mjs event add --project $P --kind quality --artifact <id> --score <1-5> --gate <label>`.
+The numbers come from the logs and from the owner, never from you (`docs/telemetry.md`).

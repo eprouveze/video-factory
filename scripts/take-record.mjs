@@ -5,25 +5,81 @@
 // usage:
 //   node scripts/take-record.mjs write --dir takes --shot S012 --model <id> --resolution 768p
 //        --duration 5 --prompt-file <file> [--ref <path> ...] [--cost 0.40] [--result <clip>]
-//        [--take N] [--verdict usable|redo|missing] [--max-takes 3] [--allow-extra]
-//        [--seed N] [--continuity "what the character wears and holds in this shot"]
+//        [--take N] [--verdict usable|redo|missing|dropped|failed] [--reason taste|continuity|technical|cost]
+//        [--max-takes 3] [--allow-extra] [--seed N] [--continuity "what the character wears and holds"]
+//        [--provider NAME] [--request-id ID] [--retries N] [--status ok|failed|safety_block] [--billed USD]
 //   node scripts/take-record.mjs read  --dir takes --shot S012 [--take N]
 //   node scripts/take-record.mjs list  --dir takes [--shot S012]
 //   node scripts/take-record.mjs set   --dir takes --shot S012 --take N [--verdict v] [--result p]
 //        [--corr 0.41 --lag 0.04] [--cost c] [--note text] [--seed N] [--continuity text]
+//        [--reason r] [--provider NAME] [--request-id ID] [--retries N] [--status s] [--billed USD]
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const VERDICTS = ["usable", "redo", "missing"];
+export const VERDICTS = ["usable", "redo", "missing", "dropped", "failed"];
+// A take that is thrown away says why: one tap from the person who judged it.
+export const REASONS = ["taste", "continuity", "technical", "cost"];
+export const REASON_VERDICTS = ["redo", "dropped"];
+export const STATUSES = ["ok", "failed", "safety_block"];
+
+// The commit of the plugin that made the call, so a take can be traced to the code that produced it.
+let cachedSha;
+export function pluginSha() {
+  if (cachedSha !== undefined) return cachedSha;
+  try {
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    cachedSha = execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+  } catch {
+    cachedSha = null;
+  }
+  return cachedSha;
+}
+
+function sha256File(path) {
+  if (!path) return null;
+  const p = resolve(path);
+  if (!existsSync(p) || !statSync(p).isFile()) return null;
+  return createHash("sha256").update(readFileSync(p)).digest("hex");
+}
+
+// The provenance envelope of one paid call. Every field is optional; what the provider returned is stored as is.
+function envelope(input, base = {}) {
+  const out = { ...base };
+  if (input.provider != null && input.provider !== "") out.provider = String(input.provider);
+  if (input.request_id != null && input.request_id !== "") out.request_id = String(input.request_id);
+  if (input.retries != null && input.retries !== "") {
+    const n = Number(input.retries);
+    if (!Number.isInteger(n) || n < 0) throw new Error(`retries must be a non-negative integer: ${input.retries}`);
+    out.retries = n;
+  }
+  if (input.status != null && input.status !== "") {
+    if (!STATUSES.includes(input.status)) throw new Error(`status must be one of ${STATUSES.join(", ")}`);
+    out.status = input.status;
+  }
+  if (input.billed_usd != null && input.billed_usd !== "") out.billed_usd = numberOrThrow(input.billed_usd, "billed amount");
+  return out;
+}
+
+function checkVerdict(verdict, reason) {
+  if (verdict != null && !VERDICTS.includes(verdict)) throw new Error(`verdict must be one of ${VERDICTS.join(", ")}`);
+  if (reason != null && !REASONS.includes(reason)) throw new Error(`reason must be one of ${REASONS.join(", ")}`);
+  if (REASON_VERDICTS.includes(verdict) && reason == null) {
+    throw new Error(`verdict ${verdict} needs --reason ${REASONS.join("|")} (ask the person who judged the take)`);
+  }
+}
 export const DEFAULT_MAX_TAKES = 3;
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 const USAGE = `usage: node scripts/take-record.mjs <write|read|list|set> --dir <takes-dir> [options]
   write  --shot ID --model M --resolution R --duration S --prompt-file F [--ref P ...]
-         [--cost USD] [--result P] [--take N] [--verdict usable|redo|missing]
-         [--max-takes 3] [--allow-extra] [--seed N] [--continuity TEXT]
+         [--cost USD] [--result P] [--take N] [--verdict usable|redo|missing|dropped|failed]
+         [--reason taste|continuity|technical|cost] [--max-takes 3] [--allow-extra] [--seed N] [--continuity TEXT]
+         [--provider NAME] [--request-id ID] [--retries N] [--status ok|failed|safety_block] [--billed USD]
+         --reason: required with the verdict redo or dropped
+         a failed or blocked call gets a record too: --status failed|safety_block (verdict becomes failed)
          --seed: the generation seed, so a take can be repeated; keep it fixed while only the prompt changes
          --continuity: what the character wears and holds in this shot, checked against the next shot
          refuses when the prompt file does not exist, when the take already has a record,
@@ -31,7 +87,8 @@ const USAGE = `usage: node scripts/take-record.mjs <write|read|list|set> --dir <
   read   --shot ID [--take N]        print one record (default: the latest take)
   list   [--shot ID]                 print every record as a JSON array
   set    --shot ID --take N [--verdict v] [--result P] [--cost USD] [--corr X --lag S] [--note T]
-         [--seed N] [--continuity TEXT]
+         [--seed N] [--continuity TEXT] [--reason R] [--provider NAME] [--request-id ID] [--retries N]
+         [--status S] [--billed USD]
 `;
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -84,9 +141,10 @@ export function writeTake(dir, input, { maxTakes = DEFAULT_MAX_TAKES, allowExtra
   }
   const duration = Number(input.duration_s);
   if (!Number.isFinite(duration) || duration <= 0) throw new Error("duration_s must be a positive number");
-  if (input.verdict != null && !VERDICTS.includes(input.verdict)) {
-    throw new Error(`verdict must be one of ${VERDICTS.join(", ")}`);
-  }
+  const env = envelope(input);
+  const verdict = input.verdict ?? (env.status && env.status !== "ok" ? "failed" : null);
+  const reason = input.reason != null && input.reason !== "" ? input.reason : null;
+  checkVerdict(verdict, reason);
   const existing = listTakes(dir, input.shot_id);
   const take = input.take != null ? Number(input.take) : existing.length + 1;
   if (!Number.isInteger(take) || take < 1) throw new Error("take must be a positive integer");
@@ -110,7 +168,11 @@ export function writeTake(dir, input, { maxTakes = DEFAULT_MAX_TAKES, allowExtra
     reference_paths: input.reference_paths ?? [],
     cost_estimate_usd: input.cost_estimate_usd != null ? numberOrThrow(input.cost_estimate_usd, "cost estimate") : null,
     result_path: input.result_path ?? null,
-    verdict: input.verdict ?? null,
+    result_sha256: sha256File(input.result_path),
+    verdict,
+    reason,
+    ...env,
+    plugin_sha: pluginSha(),
     seed: input.seed != null && input.seed !== "" ? seedOrThrow(input.seed) : null,
     continuity: input.continuity != null && input.continuity !== "" ? String(input.continuity) : null,
     created_utc: now.toISOString(),
@@ -122,10 +184,12 @@ export function writeTake(dir, input, { maxTakes = DEFAULT_MAX_TAKES, allowExtra
 
 export function updateTake(dir, shot, take, patch) {
   const rec = readTake(dir, shot, take);
-  if (patch.verdict != null && !VERDICTS.includes(patch.verdict)) {
-    throw new Error(`verdict must be one of ${VERDICTS.join(", ")}`);
-  }
+  const reason = patch.reason != null && patch.reason !== "" ? patch.reason : null;
+  checkVerdict(patch.verdict ?? null, reason ?? (patch.verdict != null ? (rec.reason ?? null) : null));
   for (const k of ["verdict", "result_path", "note", "continuity"]) if (patch[k] != null) rec[k] = patch[k];
+  if (reason != null) rec.reason = reason;
+  if (patch.result_path != null) rec.result_sha256 = sha256File(patch.result_path);
+  Object.assign(rec, envelope(patch));
   if (patch.seed != null && patch.seed !== "") rec.seed = seedOrThrow(patch.seed);
   if (patch.cost_estimate_usd != null) rec.cost_estimate_usd = Number(patch.cost_estimate_usd);
   if (patch.lipsync_corr != null) {
@@ -193,6 +257,12 @@ function main(argv) {
           verdict: o.verdict,
           seed: o.seed,
           continuity: o.continuity,
+          reason: o.reason,
+          provider: o.provider,
+          request_id: o["request-id"],
+          retries: o.retries,
+          status: o.status,
+          billed_usd: o.billed,
         },
         { maxTakes, allowExtra: !!o["allow-extra"] },
       );
@@ -213,6 +283,12 @@ function main(argv) {
         note: o.note,
         seed: o.seed,
         continuity: o.continuity,
+        reason: o.reason,
+        provider: o.provider,
+        request_id: o["request-id"],
+        retries: o.retries,
+        status: o.status,
+        billed_usd: o.billed,
       });
       process.stdout.write(JSON.stringify(rec, null, 2) + "\n");
     }
