@@ -85,9 +85,11 @@ with no picture at all.
 
 ## Phase 3 — Cut list  (free)
 6. Write `$P/edl.json`: one row per shot (`shot_id` like `S012`, `in_ms`, `out_ms`, picture,
-   `lyrics_line`, `requires_lipsync`, a start-still path or a placeholder, the overlay action,
-   the sync source). Shots must tile `[0, master duration]` exactly, with variety of angle and
-   size, and cuts on beats from the beat map. Check the total length against the master first.
+   `move` from `skills/camera-movements`, `lyrics_line`, `requires_lipsync`, a start-still path
+   or a placeholder, the overlay action, the sync source). Shots must tile `[0, master duration]`
+   exactly, with variety of angle and size, and cuts on beats from the beat map.
+   - **Camera movements (`skills/camera-movements`):** consider the 46 camera movements (`node scripts/camera-move.mjs list`) for any and all shots during cut-list and storyboard creation. Choose movements for deliberate cinematic impact and musical motivation, without overdoing motion: anchor routine verses and grounded holds with `static-shot` (`01`), `slider-right`/`left` (`12`/`12B`), or `slow-zoom-in` (`05`); use `dolly-in` (`08`), `push-past` (`13`), `low-tracking` (`20`), `reverse-tracking` (`18`), or `follow-shot` (`17`) to drive physical momentum; and save high-kinetic moves (`crash-zoom-in`/`out`, `whip-pan-right`/`left`, `snorricam`, `orbit-clockwise`, `crane-up`/`down`, `pass-through`) for chorus drops, emotional turns, and climactic reveals.
+   Check the total length against the master first.
 - **GATE 3:** the owner approves the cut list.
 
 ## Phase 4 — Animatic on the real audio  (free)
@@ -131,7 +133,10 @@ with no picture at all.
 - **GATE 6:** the owner approves the spend and the model. Read the provider balance before a batch.
 11. Per take, in this order, with the adapters in `providers/clip/` (`openrouter.mjs`,
     `minimax.mjs`, ...):
-    1. Save the prompt to `$P/prompts/<shot>-t<NN>.txt` BEFORE generating. End it with
+    1. Save the prompt to `$P/prompts/<shot>-t<NN>.txt` BEFORE generating. Assemble the clip prompt
+       using the shot's selected camera move (`node scripts/camera-move.mjs build --move <move> --brief "<scene action>" --ref-context "<start still context>" --style "<look>" --no-text-guard`)
+       so the 5-slot camera grammar (`Camera / Movement / Speed / Framing / End`), first-frame
+       reference lock, and scene action stay cleanly separated. End it with
        "No text, no captions, no interface, no logos."
        Do not name what must not appear: one word (a job, a place) can add its uniform,
        emblem or prop even when a reference image is given.

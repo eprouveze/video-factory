@@ -13,6 +13,7 @@ import { makeSpend, SpendRefused } from "./lib/spend.mjs";
 import { lookOf } from "./palette-score.mjs";
 import { beatMap } from "./beat-map.mjs";
 import { snapToGrid } from "./snap-grid.mjs";
+import { buildClipPrompt } from "./lib/camera-moves.mjs";
 
 function alignDisplayWords(displayScript, phoneticTimings) {
   const displayWords = (displayScript || "").trim().split(/\s+/).filter(Boolean);
@@ -258,10 +259,12 @@ for (let i = 0; i < scenes.length; i++) {
 
   // generative b-roll — clip scenes with no supplied asset
   if (s.visual?.source === "clip" && !s.visual.asset) {
-    const brief = (s.visual.visual_brief || s.title || s.tts_script) + styleSuffix;
+    const rawBrief = s.visual.visual_brief || s.title || s.tts_script || "";
+    const imageBrief = rawBrief + styleSuffix;
     const aspect = manifest.format?.[0] || "16:9";
 
     // reference-frame locking: generate a still and seed the clip with it (i2v).
+    // Keep imageBrief free of camera-motion instructions so the start frame is a clean static composition.
     // Locks composition/look before paying for video — ~40%→80% first-try. Opt out via ref_lock:false.
     let refFrame = s.continuity_refs?.[0];
     const lock = s.visual.ref_lock ?? manifest.brand?.ref_lock ?? true;
@@ -274,7 +277,7 @@ for (let i = 0; i < scenes.length; i++) {
         JSON.parse(
           execFileSync("node", [adapterPath("image", iprov)], {
             input: JSON.stringify({
-              brief: brief + fr.note,
+              brief: imageBrief + fr.note,
               aspect,
               refs: fr.refs,
               out_path: join(projDir, "frames", `${s.id}.png`),
@@ -289,13 +292,22 @@ for (let i = 0; i < scenes.length; i++) {
       process.stderr.write(`  ${s.id}: ref-frame via ${iprov}\n`);
     }
 
+    const move = s.visual?.shot?.move;
+    const clipBrief = move
+      ? buildClipPrompt({
+          move,
+          brief: rawBrief,
+          refFrame,
+          styleSuffix: manifest.brand?.style_suffix || "",
+        })
+      : imageBrief;
     const prov = s.provider_assignments?.clip || reg.capabilities.clip.default;
     const clipS = s.duration_ms ? Math.round(s.duration_ms / 1000) : 6;
     const r = spend("clip", prov, { scene: s.id, seconds: clipS }, () =>
       JSON.parse(
         execFileSync("node", [adapterPath("clip", prov)], {
           input: JSON.stringify({
-            brief,
+            brief: clipBrief,
             aspect,
             duration_s: clipS,
             ref_frame: refFrame,
@@ -310,7 +322,7 @@ for (let i = 0; i < scenes.length; i++) {
     save();
     if (!s.duration_ms) s.duration_ms = r.duration_ms;
     process.stderr.write(
-      `  ${s.id}: clip via ${prov}${refFrame ? " (i2v from ref)" : ""} · ${r.duration_ms}ms\n`,
+      `  ${s.id}: clip via ${prov}${move ? ` [${move}]` : ""}${refFrame ? " (i2v from ref)" : ""} · ${r.duration_ms}ms\n`,
     );
   }
 

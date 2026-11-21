@@ -13,9 +13,11 @@ gate come BEFORE any expensive generation call.**
 1. Invoke the **director** and **screenwriter** agents (Task tool) on the project brief.
    They produce the manifest: `intent`, `hook` (must work muted), per-scene `tts_script`
    (exact narration) and `visual_brief` (semantic art direction, never a keyword).
-   Apply `skills/quality-rules` — hook in first 3s, motivated b-roll, pacing, shot variety,
-   and a **`/deslop` pass** on all narration + on-screen text (strip AI-writing tells before
-   the manifest is locked — §8).
+   Apply `skills/quality-rules` and `skills/camera-movements` — hook in first 3s, motivated
+   b-roll, pacing, shot variety, and deliberate camera movement selection (`visual.shot.move`
+   from the 46-move library: consider camera movements for any and all shots during storyboard
+   creation for cinematic impact, without overdoing motion), plus a **`/deslop` pass** on all
+   narration + on-screen text (strip AI-writing tells before the manifest is locked — §8).
 2. Validate the manifest against `skills/manifest/schema/manifest.schema.json`, then run the
    audit: `node scripts/validate-manifest.mjs <project>`. Fix every error (hook, a graphic per
    sentence, the through-line, pacing, budget) before going on.
@@ -41,9 +43,13 @@ Run the **producer** agent. Per scene, in this order:
      `visual.objectPosition` biases the crop so an off-centre subject survives the 9:16 cut,
      and `visual.fit:"contain"` shows poster/cover art whole on the brand field.
 5. **Reference-frame lock** (if `visual.source` is `clip`): `image` adapter → a still that
-   fixes composition/look, passed as `ref_frame` to the clip step. (40%→80%+ first-try.)
+   fixes composition/look (keep the still brief free of camera-motion words), passed as
+   `ref_frame` to the clip step. (40%→80%+ first-try.)
 6. **Visual**: `clip` / `image` / `avatar` adapter per `visual.source`, seeded by the brief
-   (+ `continuity_refs` from prior scenes).
+   (+ `continuity_refs` from prior scenes). When `visual.shot.move` is set on a `clip` scene,
+   `scripts/produce.mjs` resolves the 5-slot camera prompt (`Camera / Movement / Speed / Framing / End`
+   from `skills/camera-movements`, or via `node scripts/camera-move.mjs build`) and prepends it
+   with the first-frame preservation note.
 7. **Per-scene review** (editor agent / `:scene-review`): score the asset against
    `visual_brief`. Below `min_semantic_score` → regenerate, don't continue silently.
 8. **Captions**: if `word_timings` empty, recover via `stt`. **Music/SFX** per scene.

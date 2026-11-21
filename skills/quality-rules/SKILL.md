@@ -49,9 +49,16 @@ lines at breath pauses, not character counts. ≤1 contextual emoji per 5-7 word
 AI clips drift in temperature/gamma across prompts. Lock a brand **LUT** before scene-specific
 correction. (Premium finishing tier: DaVinci pass for grade/HDR/broadcast.)
 
-## 7. Shot variety
+## 7. Shot variety & camera movement restraint (`skills/camera-movements`)
 ≥3 shot types per 60s (wide establishing + medium context + close emphasis). Vary camera
 height (eye + one low/high). Mix static / push / handheld.
+
+- **Consider the 46-move camera library (`skills/camera-movements`) on every shot during storyboard creation (`visual.shot.move`), without overdoing motion.** Camera movement is punctuation, not wallpaper: choose each move for its cinematic impact and emotional motivation.
+- **Storyboard Restraint & Cinematic Impact:**
+  - Keep grounded dialogue, verse setups, and data explanations still or subtly dimensional (`static-shot`, `slider-right`/`left`, `slow-zoom-in`). If every shot swoops or spins, no move lands.
+  - Save high-kinetic moves (`crash-zoom-in`/`out`, `whip-pan-right`/`left`, `snorricam`, `orbit-clockwise`/`counterclockwise`, `crane-up`/`down`, `pass-through`, `earth-zoom-out`) for earned turns, chorus drops, shock reveals, or chapter endings.
+  - Separate optical focal changes (`slow-zoom-in`, `fast-zoom-in`, `crash-zoom-in`) from physical 3D camera translation (`dolly-in`, `truck-right`, `push-past`, `tracking-shot`).
+  - Keep start-still (`ref_frame`) image briefs free of camera motion; apply the 5-slot camera prompt (`Camera / Movement / Speed / Framing / End` via `node scripts/camera-move.mjs`) only to the video clip generation call.
 
 ## 8. Script & on-screen text — strip the AI tells
 
