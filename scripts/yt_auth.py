@@ -21,7 +21,10 @@ import sys
 import urllib.parse
 import urllib.request
 
-SCOPES = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl"
+# yt-analytics.readonly is read by yt_analytics.py (the outcome check). A token made before it was
+# listed here does not carry it: run this script again to grant it.
+SCOPES = ("https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.force-ssl "
+          "https://www.googleapis.com/auth/yt-analytics.readonly")
 
 ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
 ap.add_argument("--client-json", default=os.environ.get("YOUTUBE_OAUTH_CLIENT_JSON_FILE"))

@@ -85,5 +85,27 @@
   "dropped": [],
 
   "// takes_dirs": "Take-record directories, relative to the project. Default: takes",
-  "takes_dirs": ["takes"]
+  "takes_dirs": ["takes"],
+
+  "// final_video": "The final render, relative to the project. Used for cost per finished minute and by `telemetry.mjs qc`.",
+  "final_video": "output/film.mp4",
+
+  "// qc": "Thresholds for `telemetry.mjs qc` (ffmpeg blackdetect and freezedetect). These are the defaults.",
+  "qc": { "black_min_s": 0.1, "black_pix_th": 0.05, "freeze_noise_db": -60, "freeze_min_s": 0.22 },
+
+  "// edl": "The final cut, relative to the project: rows {clip, in, out} in seconds, or {shot_id, in_ms, out_ms}. Used for EDL survival.",
+  "edl": "edl.json",
+
+  "// shot_elements": "Optional: which idea elements a shot carries, to report EDL survival per element.",
+  "shot_elements": { "S001": ["opening shot"] },
+
+  "// phases": "In order. An edit to a phase's artifacts after the gate of a later phase counts as a backward cascade.",
+  "phases": [
+    { "name": "cut-list", "gate": "G3", "artifacts": ["~/video/projects/demo/edl.json"] },
+    { "name": "stills", "gate": "G5", "artifacts": ["~/video/projects/demo/refs"] },
+    { "name": "takes", "gate": "G7", "artifacts": ["~/video/projects/demo/takes"] }
+  ],
+
+  "// targets": "Optional. A KPI listed here is reported against its target; leave it empty to report actual values only.",
+  "targets": {}
 }

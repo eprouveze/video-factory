@@ -63,5 +63,6 @@ required tier isn't configured, say so and offer the core fallback (e.g. `say` T
 code-animated visuals) rather than failing.
 
 Telemetry: after the human gate and at the end, run `node scripts/telemetry.mjs run --project <project>`;
-record an approval, rejection or correction with `node scripts/telemetry.mjs event add --project <project> --kind <kind> --note "<their words>"`
-(`docs/telemetry.md`).
+record an approval, rejection or correction with `node scripts/telemetry.mjs event add --project <project> --kind <kind> --note "<their words>"`,
+and ask for one quality tap at the gate (`--kind quality --artifact <id> --score <1-5> --gate <label>`).
+See `docs/telemetry.md`.

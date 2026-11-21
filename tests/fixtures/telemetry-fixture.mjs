@@ -1,9 +1,10 @@
 // Synthetic logs for tests/telemetry.test.mjs. Every path, id and model name is made up.
 // buildFixture(root) writes: claude/ (main + subagent transcripts), mirror/ (another host:
 // Claude-format and agy-converted), codex/ (two rollouts), project/ (rules, takes, events).
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { addEvent, addTime } from "../../scripts/telemetry.mjs";
+import { addEvent, addTime, importEvents } from "../../scripts/telemetry.mjs";
+import { writeTake } from "../../scripts/take-record.mjs";
 
 export const PROJECT = "/work/demo/projects/demo";
 const T = (hms, day = "05") => `2026-01-${day}T${hms}.000Z`;
@@ -34,6 +35,7 @@ function session(
   } = {},
 ) {
   const base = {
+    version: "9.9.9",
     sessionId: id,
     cwd,
     gitBranch: branch,
@@ -331,6 +333,7 @@ export function buildFixture(root) {
     [
       cx("15:00:00", "session_meta", {
         id: "cdx1",
+        cli_version: "0.0.1",
         cwd: "/work/third",
         git: {
           branch: "main",
@@ -468,6 +471,8 @@ export function buildFixture(root) {
       take: n,
       model: "clip-x",
       cost_estimate_usd: 0.4,
+      duration_s: 5,
+      result_path: `takes/${shot}/t0${n}.mp4`,
       verdict: null,
       created_utc: T("09:10:00"),
       ...extra,
@@ -541,4 +546,80 @@ export function buildFixture(root) {
       home: "/home/nobody",
     },
   };
+}
+
+// Everything the later additions read, on top of buildFixture: an idea ledger (imported as a
+// backfill file), quality taps, a review interval, more gates, classed declared time, a failed
+// call and a dropped take, phases, an EDL and KPI targets. Element names are made up.
+export function addExtras(fx) {
+  const { project } = fx;
+  const idea = (at, element, origin, proposer, labelled_by, extra = {}) => ({
+    kind: "idea", element, origin, proposer, at: T(at), source: `storyboard doc, block "${element}"`, labelled_by, ...extra,
+  });
+  const backfill = [
+    idea("09:01:00", "opening shot", "human", "human", "human"),
+    idea("09:02:00", "color palette", "ai-chosen", "ai", "agent", { options_offered: 3 }),
+    idea("09:03:00", "title card", "ai-chosen", "ai", "agent", { options_offered: 2 }),
+    idea("09:04:00", "ending", "human-seeded-ai-developed", "human", "human", { surprise: true }),
+    idea("09:05:00", "bridge motif", "ai-seeded-human-developed", "ai", "human", { options_offered: 4 }),
+    idea("09:06:00", "clock prop", "real-system", "real-system", "agent"),
+    idea("10:00:00", "title card", "dropped", "ai", "agent"),
+    idea("10:30:00", "title card", "ai-chosen", "ai", "agent"),
+    idea("10:40:00", "title card", "dropped", "ai", "agent", { dropped_origin: "ai-chosen" }),
+    idea("10:50:00", "new ending", "human", "human", "human", { supersedes: "ending" }),
+    idea("10:55:00", "rain idea", "dropped", "ai", "human", { dropped_origin: "ai-chosen" }),
+    { kind: "correction", note: "bridge too slow", at: T("12:45:00"), source: "review notes, item 2" },
+  ];
+  const file = join(project, "backfill.jsonl");
+  writeFileSync(file, backfill.map((r) => JSON.stringify(r) + "\n").join(""));
+  const imported = importEvents(project, file);
+
+  for (const [n, at] of [["G3", "12:10:00"], ["G4", "12:20:00"], ["G5", "12:30:00"], ["G6", "12:40:00"]]) {
+    addEvent(project, { kind: "gate", gate: n, note: `gate ${n}`, at: T(at) });
+  }
+  addEvent(project, { kind: "quality", artifact: "cut-list-v1", score: 4, gate: "G1", at: T("11:05:00") });
+  addEvent(project, { kind: "quality", artifact: "cut-list-v2", score: 2, gate: "G1", at: T("12:05:00") });
+  addEvent(project, { kind: "quality", artifact: "animatic-v1", score: 5, gate: "G2", at: T("12:06:00") });
+  addEvent(project, { kind: "quality", artifact: "still-3", score: 3, at: T("12:07:00") });
+  addEvent(project, { kind: "review", artifact: "animatic-v1", start: T("10:10:00"), end: T("10:30:00") });
+  addTime(project, { minutes: 10, what: "renaming files", category: "chores", at: T("08:45:00") });
+
+  // a failed call and a dropped take, written the way the producer writes them
+  const prompt = join(project, "prompt.txt");
+  writeFileSync(prompt, "a prompt. No text, no captions.");
+  const clip = join(project, "takes", "S005", "t01.mp4");
+  mkdirSync(join(project, "takes", "S005"), { recursive: true });
+  writeFileSync(clip, "not really a clip");
+  const now = new Date(T("09:20:00"));
+  const takes = join(project, "takes");
+  writeTake(takes, {
+    shot_id: "S004", model: "clip-y", resolution: "768p", duration_s: 5, prompt_file: prompt, cost_estimate_usd: 0.4,
+    provider: "prov-a", request_id: "req-123", retries: 2, status: "failed", billed_usd: 0.1,
+  }, { now });
+  writeTake(takes, {
+    shot_id: "S005", model: "clip-x", resolution: "768p", duration_s: 5, prompt_file: prompt, cost_estimate_usd: 0.2,
+    result_path: clip, verdict: "dropped", reason: "continuity",
+  }, { now });
+
+  writeFileSync(join(project, "edl-final.json"), JSON.stringify([
+    { clip: "takes/S001/t02.mp4", in: 0, out: 3 },
+    { clip: "takes/S002/t01.mp4", in: 1, out: 2.5 },
+    { shot_id: "S002", in_ms: 5000, out_ms: 6000 },
+    { clip: "takes/S009/zz.mp4", in: 0, out: 1 },
+  ]));
+
+  const rulesFile = join(project, "telemetry", "rules.json");
+  const rules = JSON.parse(readFileSync(rulesFile, "utf8"));
+  Object.assign(rules, {
+    edl: "edl-final.json",
+    shot_elements: { S001: ["opening shot"], S002: ["opening shot", "color palette"] },
+    phases: [
+      { name: "drafts", artifacts: [`${PROJECT}/drafts`] },
+      { name: "cut-list", gate: "G1", artifacts: [`${PROJECT}/edl.json`] },
+      { name: "stills", gate: "G2", artifacts: [`${PROJECT}/refs`] },
+    ],
+    targets: { yield: 0.6, ai_to_human_ratio: 0.05 },
+  });
+  writeFileSync(rulesFile, JSON.stringify(rules, null, 2) + "\n");
+  return { ...fx, imported, backfill: file, clip };
 }

@@ -81,7 +81,7 @@ test("shot table lists every shot with verdict, takes, prompt and lip-sync", () 
   writeTake(takes, input(prompt, { shot_id: "S001" }));
   writeTake(takes, input(prompt, { shot_id: "S001" }));
   updateTake(takes, "S001", 2, { verdict: "usable", lipsync_corr: 0.5, lipsync_lag_s: 0.03 });
-  writeTake(takes, input(prompt, { shot_id: "S002", verdict: "redo" }));
+  writeTake(takes, input(prompt, { shot_id: "S002", verdict: "redo", reason: "taste" }));
   const scenes = [
     { id: "S001", in_ms: 0, out_ms: 4000, requires_lipsync: true, visual: { asset: "refs/s1.png" } },
     { id: "S002", in_ms: 4000, out_ms: 8000, visual: {} },

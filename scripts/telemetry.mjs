@@ -5,13 +5,13 @@
 // Same inputs + same rules file = byte-identical facts.jsonl, summary.json and table: `run`
 // never reads the clock, never uses randomness, and sorts everything it emits.
 //
-// usage:
-//   node scripts/telemetry.mjs run --project <dir> [--rules <file>] [--out <dir>]
-//        [--claude <root> ...] [--mirror <root> ...] [--codex <root> ...] [--takes <dir> ...]
-//        [--from <ISO>] [--to <ISO>] [--host <name>] [--home <dir>] [--quiet]
-//   node scripts/telemetry.mjs event add --project <dir> --kind correction|rejection|approval|gate|waiting
-//        --note "..." [--at <ISO>] [--gate <label>]
-//   node scripts/telemetry.mjs time add --project <dir> --minutes N --what "..." [--at <ISO>]
+// usage (full list of flags: --help, and docs/telemetry.md):
+//   node scripts/telemetry.mjs run --project <dir> [--rules <file>] [--out <dir>] [--from <ISO>] [--to <ISO>]
+//   node scripts/telemetry.mjs event add --project <dir> --kind <kind> ...
+//   node scripts/telemetry.mjs event import --project <dir> --file events.jsonl
+//   node scripts/telemetry.mjs time add --project <dir> --minutes N --what "..." [--category decide|correct|chores]
+//   node scripts/telemetry.mjs qc --project <dir>      loudness, black and freeze frames of the final video
+//   node scripts/telemetry.mjs edl --project <dir>     seconds generated against seconds kept in the cut
 //   node scripts/telemetry.mjs compare <summary-A.json> <summary-B.json>
 // Schema of the rules file and of every output: docs/telemetry.md
 import { createHash } from "node:crypto";
@@ -30,15 +30,16 @@ import {
 import { homedir, hostname } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { listShots, listTakes } from "./take-record.mjs";
+import { listShots, listTakes, pluginSha, REASONS } from "./take-record.mjs";
+import {
+  addEvent, creativity, EVENT_KINDS, importEvents, orderEvents, overlapMs, quality, reviewIntervals,
+} from "./lib/telemetry-events.mjs";
+import {
+  backwardCascade, DEFAULT_EDIT_TOOLS, edlSurvival, effortKpis, humanSplit, probeDuration, renderQc,
+} from "./lib/telemetry-kpis.mjs";
 
-export const EVENT_KINDS = [
-  "correction",
-  "rejection",
-  "approval",
-  "gate",
-  "waiting",
-];
+export { addEvent, EVENT_KINDS, importEvents };
+
 export const TOKEN_FIELDS = [
   "input_tokens",
   "output_tokens",
@@ -47,6 +48,7 @@ export const TOKEN_FIELDS = [
   "thinking_tokens",
 ];
 const DEFAULT_IDLE_CAP_MIN = 15;
+export const TIME_CATEGORIES = ["decide", "correct", "chores"];
 // Older lines carry no origin field: a user line that starts like this was written by the
 // harness or by another agent, not typed by a person. The first list starts new work.
 const TRIGGER_PREFIXES = [
@@ -60,14 +62,24 @@ const HARNESS_PREFIXES = [
   "[Request interrupted",
 ];
 
-const USAGE = `usage: node scripts/telemetry.mjs <run|event add|time add|compare> [options]
+const USAGE = `usage: node scripts/telemetry.mjs <run|event add|event import|time add|qc|edl|compare> [options]
   run      --project DIR [--rules FILE] [--out DIR] [--claude ROOT ...] [--mirror ROOT ...]
-           [--codex ROOT ...] [--takes DIR ...] [--from ISO] [--to ISO] [--host NAME] [--home DIR] [--quiet]
+           [--codex ROOT ...] [--takes DIR ...] [--from ISO] [--to ISO] [--host NAME] [--home DIR]
+           [--edl FILE] [--plugin-sha SHA] [--quiet]
            reads <project>/telemetry/rules.json, writes facts.jsonl + summary.json next to it and
            prints the totals table. Source roots default to ~/.claude/projects, ~/.lex/transcripts
            and ~/.codex/sessions; pass "none" to switch one off.
-  event add --project DIR --kind ${EVENT_KINDS.join("|")} --note TEXT [--at ISO] [--gate LABEL]
-  time add  --project DIR --minutes N --what TEXT [--at ISO]
+  event add --project DIR --kind KIND [--at ISO] [--source TEXT] ..., by kind:
+           correction|rejection|approval|gate|waiting  --note TEXT [--gate LABEL]
+           idea     --element NAME --origin human|ai-chosen|human-seeded-ai-developed|ai-seeded-human-developed|real-system|dropped
+                    --proposer human|ai|real-system --labelled-by human|agent --source TEXT
+                    [--options-offered N] [--surprise] [--supersedes ELEMENT] [--dropped-origin ORIGIN]
+           review   --artifact ID --start ISO --end ISO
+           quality  --artifact ID --score 1-5 [--gate LABEL]      (a person's tap; labelled_by is human)
+  event import --project DIR --file FILE.jsonl    the same fields, one JSON object per line, all validated first
+  time add  --project DIR --minutes N --what TEXT [--at ISO] [--category decide|correct|chores]
+  qc       --project DIR [--video FILE]    writes telemetry/render-qc.json (needs ffmpeg)
+  edl      --project DIR [--edl FILE]      prints seconds generated vs kept, per shot and per take
   compare  A/summary.json B/summary.json     print every number of A next to B with the difference
 `;
 
@@ -241,6 +253,21 @@ export function loadRules(file, { home = homedir() } = {}) {
     classes,
     dropped: paths(strList(raw.dropped, "dropped")),
     takes_dirs: strList(raw.takes_dirs, "takes_dirs"),
+    final_video: typeof raw.final_video === "string" ? raw.final_video : null,
+    edl: typeof raw.edl === "string" ? raw.edl : null,
+    shot_elements: Object.fromEntries(
+      Object.entries(raw.shot_elements ?? {}).map(([k, v]) => [k, strList(v, `shot_elements.${k}`)]),
+    ),
+    phases: (raw.phases ?? []).map((ph, i) => ({
+      name: String(ph.name ?? `phase-${i + 1}`),
+      gate: ph.gate != null ? String(ph.gate) : null,
+      artifacts: paths(strList(ph.artifacts, `phases[${i}].artifacts`)),
+    })),
+    edit_tools: raw.edit_tools ? strList(raw.edit_tools, "edit_tools") : DEFAULT_EDIT_TOOLS,
+    qc: raw.qc && typeof raw.qc === "object" ? raw.qc : {},
+    targets: Object.fromEntries(
+      Object.entries(raw.targets ?? {}).filter(([, v]) => typeof v === "number" && Number.isFinite(v)),
+    ),
     sha256: createHash("sha256").update(bytes).digest("hex"),
   };
 }
@@ -413,6 +440,7 @@ function parseClaude(file, { harness, host, win, subagent }) {
             typeof msg.model === "string" && msg.model ? msg.model : "unknown",
           usage: zeroTokens(),
           usageReported: false,
+          version: typeof o.version === "string" ? o.version : null,
           tools: [],
           toolIds: new Set(),
           cwd: ev.cwd,
@@ -517,6 +545,7 @@ function parseCodex(file, { host, win }) {
     const p = o.payload && typeof o.payload === "object" ? o.payload : {};
     if (o.type === "session_meta") {
       s.session = p.id ?? p.session_id ?? s.session;
+      s.version = typeof p.cli_version === "string" ? p.cli_version : null;
       cwd = p.cwd ?? cwd;
       branch = p.git?.branch ?? branch;
       s.repoText = String(p.git?.repository_url ?? "");
@@ -573,6 +602,7 @@ function parseCodex(file, { host, win }) {
         tools: pending,
         toolIds: new Set(),
         cwd,
+        version: s.version ?? null,
         sidechain: false,
       };
       pending = [];
@@ -704,7 +734,13 @@ export function analyze({
   events = [],
   declared = [],
   takes = [],
+  sha = null,
+  finalDurationS = null,
 }) {
+  const ordered = orderEvents(
+    events.filter((e) => inWindow(Date.parse(e.at), win)),
+  );
+  const reviews = reviewIntervals(ordered);
   const sessions = collectSessions(sources, rules, win);
   const mains = sessions.filter((s) => !s.subagent);
   const subs = sessions.filter((s) => s.subagent);
@@ -761,6 +797,7 @@ export function analyze({
   // tokens: one row per response, deduplicated across every source by (message id, request id)
   const seen = new Set();
   const facts = [];
+  const edits = []; // edit-tool calls of attributed responses, for the backward cascade
   let duplicates = 0;
   let mergedLines = 0;
   for (const s of sessions) {
@@ -776,6 +813,10 @@ export function analyze({
           seen.add(r.key);
         }
         if (!t.attr) continue;
+        if (rules.phases.length)
+          for (const tool of r.tools)
+            if (rules.edit_tools.includes(tool.name))
+              edits.push({ ts: r.ts, text: tool.text });
         facts.push({
           ts: iso(r.ts),
           host: s.host,
@@ -792,6 +833,8 @@ export function analyze({
           turn: s.subagent ? (t.parent ?? t.id) : t.id,
           attribution_rule: t.attr,
           rework: r.rework,
+          harness_version: r.version ?? null,
+          plugin_sha: sha,
           response: r.key,
         });
       }
@@ -819,6 +862,8 @@ export function analyze({
   };
   const countedTurns = new Set();
   const usedSessions = new Set();
+  const gaps = [];
+  const aiMsByClass = {};
   for (const s of mains) {
     s.turns.forEach((t, i) => {
       if (!t.attr || countedTurns.has(t.id)) return;
@@ -826,16 +871,30 @@ export function analyze({
       usedSessions.add(`${s.harness}:${s.session}`);
       time.turns += 1;
       if (t.human) time.human_turns += 1;
+      let turnAi = 0;
       t.segments.forEach((seg, k) => {
-        time.ai_ms += seg.end - seg.start;
+        turnAi += seg.end - seg.start;
         if (k > 0)
           time.ai_idle_ms += Math.max(0, seg.start - t.segments[k - 1].end);
       });
+      time.ai_ms += turnAi;
+      // a turn's AI time is split between the classes by its responses
+      if (!t.responses.length)
+        aiMsByClass.unclassified = (aiMsByClass.unclassified ?? 0) + turnAi;
+      for (const r of t.responses)
+        aiMsByClass[r.class] =
+          (aiMsByClass[r.class] ?? 0) + turnAi / t.responses.length;
       const next = s.turns[i + 1];
       if (next?.human) {
         const gap = Math.max(0, next.start - t.end);
-        time.human_active_ms += Math.min(gap, rules.idle_cap_ms);
-        time.away_ms += Math.max(0, gap - rules.idle_cap_ms);
+        // A gap that overlaps a review is not capped: the reviewed part is review time,
+        // the rest is keyboard time.
+        const reviewed = Math.min(gap, overlapMs(t.end, next.start, reviews));
+        const keyboard =
+          reviewed > 0 ? gap - reviewed : Math.min(gap, rules.idle_cap_ms);
+        time.human_active_ms += keyboard;
+        if (!reviewed) time.away_ms += Math.max(0, gap - rules.idle_cap_ms);
+        gaps.push({ start: t.end, until: next.end, keyboard_ms: keyboard });
       }
     });
   }
@@ -892,11 +951,11 @@ export function analyze({
       });
     const row = spendRows.get(k);
     row.takes += 1;
-    if (
-      typeof t.cost_estimate_usd === "number" &&
-      Number.isFinite(t.cost_estimate_usd)
-    ) {
-      const micro = Math.round(t.cost_estimate_usd * 1e6);
+    // the amount the provider billed, when the record has it; else the estimate
+    const amount =
+      typeof t.billed_usd === "number" ? t.billed_usd : t.cost_estimate_usd;
+    if (typeof amount === "number" && Number.isFinite(amount)) {
+      const micro = Math.round(amount * 1e6);
       row.micro += micro;
       spendMicro += micro;
     } else {
@@ -911,16 +970,15 @@ export function analyze({
   }
   const perShot = [...shots.values()].sort((a, b) => cmp(a.shot, b.shot));
   const kept = perShot.reduce((n, s) => n + s.kept, 0);
+  const thrown = takes.filter((t) => ["redo", "dropped"].includes(t.verdict));
+  const byReason = [...REASONS, "unspecified"].map((reason) => ({
+    reason,
+    takes: thrown.filter((t) => (t.reason ?? "unspecified") === reason).length,
+    of: thrown.length,
+  }));
 
   // human events
-  const evs = events
-    .filter((e) => inWindow(Date.parse(e.at), win))
-    .sort(
-      (a, b) =>
-        cmp(a.at, b.at) ||
-        cmp(a.kind, b.kind) ||
-        cmp(a.note ?? "", b.note ?? ""),
-    );
+  const evs = ordered;
   const byKind = Object.fromEntries(
     EVENT_KINDS.map((k) => [k, evs.filter((e) => e.kind === k).length]),
   );
@@ -959,6 +1017,16 @@ export function analyze({
   const decl = declared.filter(
     (d) => d.at == null || inWindow(Date.parse(d.at), win),
   );
+  const declaredMin = decl.reduce((n, d) => n + d.minutes, 0);
+  const reviewMs = reviews.reduce((n, [a, b]) => n + (b - a), 0);
+  const versions = [
+    ...new Set(facts.map((f) => `${f.harness}\u0000${f.harness_version ?? ""}`)),
+  ]
+    .sort(cmp)
+    .map((k) => {
+      const [harness, version] = k.split("\u0000");
+      return { harness, harness_version: version || null };
+    });
 
   const summary = {
     schema: 1,
@@ -992,13 +1060,18 @@ export function analyze({
       ai_s: secs(time.ai_ms),
       ai_idle_s: secs(time.ai_idle_ms),
       subagent_parallel_s: secs(time.subagent_ms),
-      human_active_s: secs(time.human_active_ms),
+      human_keyboard_s: secs(time.human_active_ms),
+      human_review_s: secs(reviewMs),
+      declared_minutes: declaredMin,
+      // keyboard + review + declared; the declared part is a person's word, not a measurement
+      human_total_s: secs(time.human_active_ms + reviewMs + declaredMin * 60000),
       away_s: secs(time.away_ms),
-      declared_minutes: decl.reduce((n, d) => n + d.minutes, 0),
+      split: humanSplit({ gaps, reviewMs, declared: decl, ordered }),
       declared: decl.map((d) => ({
         at: d.at ?? null,
         minutes: d.minutes,
         what: d.what,
+        category: d.category ?? null,
       })),
     },
     spend: {
@@ -1018,10 +1091,25 @@ export function analyze({
       takes: takes.length,
       kept,
       ratio: ratio(kept, takes.length),
+      failed: takes.filter((t) => t.verdict === "failed").length,
+      thrown_away: thrown.length,
+      by_reason: byReason,
       by_shot: perShot.map((s) => ({ ...s, ratio: ratio(s.kept, s.takes) })),
     },
     events: { by_kind: byKind, gates, waiting },
+    quality: quality(ordered),
+    creativity: creativity(ordered),
+    versions: { plugin_sha: sha, harnesses: versions },
   };
+  if (rules.phases.length)
+    summary.cascade = backwardCascade({ phases: rules.phases, edits, ordered });
+  summary.final_render = { duration_s: finalDurationS };
+  summary.kpis = effortKpis({
+    summary,
+    aiMsByClass,
+    finalDurationS,
+    targets: rules.targets,
+  });
   return { facts, summary };
 }
 
@@ -1050,6 +1138,102 @@ function table(head, rows) {
         .trimEnd(),
     )
     .join("\n");
+}
+
+const frac = (n, d) => `${n}/${d}`;
+
+// Quality, effort, creativity and the optional blocks. A ratio always shows what it is made of.
+function renderDerived(s) {
+  const q = s.quality;
+  const c = s.creativity;
+  const out = [
+    "QUALITY (a person's 1-5 tap)",
+    table(
+      ["gate", "n", "mean", "1", "2", "3", "4", "5"],
+      [
+        ...q.by_gate.map((g) => [g.gate, g.n, g.mean, ...Object.values(g.scores)]),
+        ["ALL", q.n, q.mean, ...Object.values(q.scores)],
+      ],
+    ),
+    `gates without a tap: ${frac(q.skip.skipped, q.skip.gates)}` +
+      (q.skip.share == null ? "" : ` = ${q.skip.share}`),
+  ];
+  if (q.skip.retire) out.push("QUALITY TAP: skipped >30%, retire per rule");
+  out.push(
+    "",
+    `EFFORT KPIs (quality mean ${q.mean ?? "-"}, n=${q.n})`,
+    table(
+      ["kpi", "value", "numerator", "denominator", "target", "vs target"],
+      s.kpis.map((k) => [k.kpi, k.value, k.numerator, k.denominator, k.target ?? null, k.vs_target ?? null]),
+    ),
+    "",
+    `CREATIVITY (${c.elements} elements: ${c.live} live, ${c.dropped} dropped)`,
+    table(
+      ["origin", "count", "of", "share"],
+      c.by_origin.map((o) => [o.origin, o.count, o.of, o.share]),
+    ),
+    table(
+      ["labelled by", "AI kept", "AI kept + AI dropped", "AI acceptance", "options", "decisions", "mean options", "surprise (declared)", "re-proposals"],
+      [
+        ["ALL", c],
+        ...c.by_labelled_by.map((b) => [b.labelled_by, b]),
+      ].map(([label, x]) => [
+        label,
+        x.ai_acceptance.numerator,
+        x.ai_acceptance.denominator,
+        x.ai_acceptance.rate,
+        x.options_offered.options,
+        x.options_offered.decisions,
+        x.options_offered.mean,
+        x.surprise_declared,
+        x.reproposals,
+      ]),
+    ),
+  );
+  if (s.cascade) {
+    out.push(
+      "",
+      `BACKWARD CASCADE: ${s.cascade.edits} edits to an earlier phase after a later gate`,
+      table(
+        ["phase", "edits after a later gate", "later gate at"],
+        s.cascade.by_phase.map((p) => [p.phase, p.edits_after_later_gate, p.later_gate_at]),
+      ),
+    );
+  }
+  if (s.edl_survival) {
+    const e = s.edl_survival;
+    out.push(
+      "",
+      `EDL SURVIVAL: ${e.kept_s}s kept of ${e.generated_s}s generated = ${e.ratio ?? "-"} (${e.unmatched_rows} rows, ${e.unmatched_s}s, match no take)`,
+      table(
+        ["shot", "takes", "generated s", "kept s", "ratio"],
+        e.by_shot.map((r) => [r.shot, r.takes, r.generated_s, r.kept_s, r.ratio]),
+      ),
+    );
+  }
+  if (s.render_qc) {
+    const r = s.render_qc;
+    out.push(
+      "",
+      `RENDER QC (${r.ffmpeg_version}): ${r.duration_s}s, ${r.loudness_lufs ?? "-"} LUFS, ` +
+        `black ${r.black?.count ?? "-"} (${r.black?.total_s ?? "-"}s), freeze ${r.freeze?.count ?? "-"} (${r.freeze?.total_s ?? "-"}s)`,
+    );
+  }
+  if (s.outcome) {
+    out.push(
+      "",
+      "OUTCOME (after publication)",
+      table(
+        ["window", "status", "views", "avg view s", "avg view %", "likes", "comments", "subscribers gained"],
+        (s.outcome.windows ?? []).map((w) => [
+          w.window, w.status, w.metrics?.views ?? null, w.metrics?.averageViewDuration ?? null,
+          w.metrics?.averageViewPercentage ?? null, w.metrics?.likes ?? null, w.metrics?.comments ?? null,
+          w.metrics?.subscribersGained ?? null,
+        ]),
+      ),
+    );
+  }
+  return out;
 }
 
 export function renderSummary(s) {
@@ -1110,18 +1294,25 @@ export function renderSummary(s) {
           t.subagent_parallel_s,
         ],
         [
-          `human active (cap ${s.idle_cap_minutes} min)`,
-          hms(t.human_active_s),
-          t.human_active_s,
+          `human at the keyboard (cap ${s.idle_cap_minutes} min)`,
+          hms(t.human_keyboard_s),
+          t.human_keyboard_s,
         ],
-        ["away", hms(t.away_s), t.away_s],
+        ["human reviewing", hms(t.human_review_s), t.human_review_s],
         [
           "declared (not measured)",
           hms(t.declared_minutes * 60),
           t.declared_minutes * 60,
         ],
+        [
+          "human total (keyboard + review + declared)",
+          hms(t.human_total_s),
+          t.human_total_s,
+        ],
+        ["away", hms(t.away_s), t.away_s],
       ],
     ),
+    `human time split: decide ${hms(t.split.decide_s)}, correct ${hms(t.split.correct_s)}, chores ${hms(t.split.chores_s)}, not derivable ${hms(t.split.unclassified_s)}`,
     `turns: ${t.turns} (${t.human_turns} started by a person)`,
     "",
     "PAID SPEND (take records only)",
@@ -1153,6 +1344,9 @@ export function renderSummary(s) {
         ["ALL", s.yield.takes, s.yield.kept, s.yield.ratio],
       ],
     ),
+    `failed calls: ${s.yield.failed} of ${s.yield.takes} takes`,
+    `thrown away (redo or dropped) by reason, of ${s.yield.thrown_away}: ` +
+      s.yield.by_reason.map((r) => `${r.reason} ${r.takes}`).join(", "),
     "",
     "HUMAN EVENTS",
     table(
@@ -1164,6 +1358,8 @@ export function renderSummary(s) {
         `gate ${g.gate} at ${g.at}: ${g.since_previous_s == null ? "first gate" : `${hms(g.since_previous_s)} after the previous gate`}`,
     ),
     `waiting on a person: ${hms(s.events.waiting.total_s)} over ${s.events.waiting.resolved} resolved, ${s.events.waiting.open} still open`,
+    "",
+    ...renderDerived(s),
   ];
   return out.join("\n") + "\n";
 }
@@ -1227,33 +1423,13 @@ function stamp(at, now) {
   return new Date(ms).toISOString();
 }
 
-export function addEvent(
-  project,
-  { kind, note, at, gate },
-  { now = new Date() } = {},
-) {
-  if (!EVENT_KINDS.includes(kind))
-    throw new Error(`--kind must be one of ${EVENT_KINDS.join(", ")}`);
-  if (!note) throw new Error("--note is required");
-  const rec = {
-    at: stamp(at, now),
-    kind,
-    note: String(note),
-    ...(gate ? { gate: String(gate) } : {}),
-  };
-  mkdirSync(telemetryDir(project), { recursive: true });
-  appendFileSync(
-    join(telemetryDir(project), "events.jsonl"),
-    JSON.stringify(rec) + "\n",
-  );
-  return rec;
-}
-
 export function addTime(
   project,
-  { minutes, what, at },
+  { minutes, what, at, category },
   { now = new Date() } = {},
 ) {
+  if (category != null && !TIME_CATEGORIES.includes(category))
+    throw new Error(`--category must be one of ${TIME_CATEGORIES.join(", ")}`);
   const m = Number(minutes);
   if (!Number.isFinite(m) || m <= 0)
     throw new Error("--minutes must be a positive number");
@@ -1262,6 +1438,7 @@ export function addTime(
     at: stamp(at, now),
     minutes: m,
     what: String(what),
+    ...(category ? { category } : {}),
     declared: true,
   };
   mkdirSync(telemetryDir(project), { recursive: true });
@@ -1270,6 +1447,54 @@ export function addTime(
     JSON.stringify(rec) + "\n",
   );
   return rec;
+}
+
+function loadEdl(project, rules, given) {
+  const file = given ?? (rules.edl ? resolve(project, rules.edl) : null);
+  if (!file || !existsSync(resolve(file))) return null;
+  return {
+    edl: JSON.parse(readFileSync(resolve(file), "utf8")),
+    edlDir: dirname(resolve(file)),
+  };
+}
+
+function projectContext(opts) {
+  const project = resolve(opts.project);
+  const rules = loadRules(
+    opts.rules ?? join(telemetryDir(project), "rules.json"),
+    { home: opts.home ?? homedir() },
+  );
+  const takesDirs = opts.takes?.length
+    ? opts.takes.map((d) => resolve(d))
+    : (rules.takes_dirs.length ? rules.takes_dirs : ["takes"]).map((d) =>
+        resolve(project, d),
+      );
+  return { project, rules, takesDirs };
+}
+
+// Seconds generated against seconds kept in the final cut, per shot and per take.
+export function runEdl(opts) {
+  const { project, rules, takesDirs } = projectContext(opts);
+  const edl = loadEdl(project, rules, opts.edl);
+  if (!edl) throw new Error("no EDL: pass --edl FILE or set `edl` in the rules file");
+  return edlSurvival({
+    ...edl,
+    project,
+    takes: readTakes(takesDirs, { from: null, to: null }),
+    shotElements: rules.shot_elements,
+  });
+}
+
+// Loudness, black and freeze frames, duration of the final video -> telemetry/render-qc.json
+export function runQc(opts) {
+  const { project, rules } = projectContext(opts);
+  const file = opts.video ?? rules.final_video;
+  if (!file) throw new Error("no final video: pass --video FILE or set `final_video` in the rules file");
+  const qc = renderQc(resolve(project, file), rules.qc);
+  const out = resolve(opts.out ?? telemetryDir(project));
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "render-qc.json"), JSON.stringify(qc, null, 2) + "\n");
+  return qc;
 }
 
 export function run(opts) {
@@ -1300,15 +1525,32 @@ export function run(opts) {
         resolve(project, d),
       );
   const tdir = telemetryDir(project);
+  const takes = readTakes(takesDirs, win);
+  const finalVideo = rules.final_video
+    ? resolve(project, rules.final_video)
+    : null;
   const { facts, summary } = analyze({
     rules,
     sources,
     win,
     events: readJsonl(join(tdir, "events.jsonl")),
     declared: readJsonl(join(tdir, "declared-time.jsonl")),
-    takes: readTakes(takesDirs, win),
+    takes,
+    sha: opts["plugin-sha"] ?? pluginSha(),
+    finalDurationS: probeDuration(finalVideo),
   });
   if (summary.project == null) summary.project = basename(project);
+  // Results of the other subcommands, when they have been run for this project.
+  const edl = loadEdl(project, rules, opts.edl);
+  if (edl) summary.edl_survival = edlSurvival({ ...edl, project, takes, shotElements: rules.shot_elements });
+  const readJson = (name) =>
+    existsSync(join(tdir, name))
+      ? JSON.parse(readFileSync(join(tdir, name), "utf8"))
+      : null;
+  const qc = readJson("render-qc.json");
+  if (qc) summary.render_qc = qc;
+  const outcome = readJson("outcome.json");
+  if (outcome) summary.outcome = outcome;
   const out = resolve(opts.out ?? tdir);
   mkdirSync(out, { recursive: true });
   writeFileSync(
@@ -1322,11 +1564,20 @@ export function run(opts) {
   return { facts, summary, out, text: renderSummary(summary) };
 }
 
+// CLI flag -> event field
+const EVENT_FLAGS = [
+  ["kind", "kind"], ["at", "at"], ["note", "note"], ["gate", "gate"], ["source", "source"],
+  ["element", "element"], ["origin", "origin"], ["proposer", "proposer"],
+  ["labelled-by", "labelled_by"], ["options-offered", "options_offered"],
+  ["surprise", "surprise"], ["supersedes", "supersedes"], ["dropped-origin", "dropped_origin"],
+  ["artifact", "artifact"], ["score", "score"], ["start", "start"], ["end", "end"],
+];
+
 // ── CLI ─────────────────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
   const opts = { _: [] };
   const many = new Set(["claude", "mirror", "codex", "takes"]);
-  const flags = new Set(["quiet"]);
+  const flags = new Set(["quiet", "surprise"]);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith("--")) {
@@ -1367,20 +1618,30 @@ function main(argv) {
       process.stdout.write(compareSummaries(load(o._[1]), load(o._[2])));
       return 0;
     }
-    if (
-      !["run", "event", "time"].includes(cmd) ||
-      (cmd !== "run" && sub !== "add")
-    ) {
+    const known =
+      ["run", "qc", "edl"].includes(cmd) ||
+      (cmd === "event" && ["add", "import"].includes(sub)) ||
+      (cmd === "time" && sub === "add");
+    if (!known) {
       process.stderr.write(`unknown command: ${o._.join(" ")}\n${USAGE}`);
       return 2;
     }
     if (!o.project) throw new Error("--project is required");
+    const print = (v) => process.stdout.write(JSON.stringify(v, null, 2) + "\n");
     if (cmd === "run") {
       const r = run(o);
       if (!o.quiet) process.stdout.write(r.text);
-    } else if (cmd === "event")
-      process.stdout.write(JSON.stringify(addEvent(o.project, o)) + "\n");
-    else process.stdout.write(JSON.stringify(addTime(o.project, o)) + "\n");
+    } else if (cmd === "qc") print(runQc(o));
+    else if (cmd === "edl") print(runEdl(o));
+    else if (cmd === "event" && sub === "import") {
+      if (!o.file) throw new Error("--file is required");
+      process.stdout.write(JSON.stringify(importEvents(o.project, o.file)) + "\n");
+    } else if (cmd === "event") {
+      const raw = {};
+      for (const [flag, field] of EVENT_FLAGS)
+        if (o[flag] != null) raw[field] = o[flag];
+      process.stdout.write(JSON.stringify(addEvent(o.project, raw)) + "\n");
+    } else process.stdout.write(JSON.stringify(addTime(o.project, o)) + "\n");
     return 0;
   } catch (e) {
     process.stderr.write(`telemetry: ${e.message}\n`);
