@@ -35,8 +35,10 @@ node scripts/telemetry.mjs compare projects/demo/telemetry/summary.json projects
 | Codex rollouts, `YYYY/MM/DD/*.jsonl` | `~/.codex/sessions` | `--codex` | `codex` |
 | Take records (`scripts/take-record.mjs`) | `<project>/takes` | `--takes` | |
 
-Each flag can be repeated; `none` switches a source off (a mirror on a network mount is slow to
-scan: pass `--mirror none` when the project ran on one machine). `--host` names the machine
+Each flag can be repeated; `none` switches a source off. With a `window.from`, a file not
+modified since then is skipped without being read; without one every file is read, which on a
+mirror kept on a network mount takes a long time (pass `--mirror none` when the project ran on
+one machine). `--host` names the machine
 that owns the local roots (default: its hostname), `--home` says what `~/` means in the rules.
 `--from` / `--to` override the window of the rules file. `--rules` and `--out` point at
 another rules file and output directory, which is how a baseline is made (see below).
