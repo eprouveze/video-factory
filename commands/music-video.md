@@ -29,6 +29,12 @@ with no picture at all.
 - **GATE 0 (story):** write the story as a short treatment (who wants what, what goes wrong,
   what it costs, how it ends, and what the picture shows that the song does not say) and work
   it out with the owner. No lyric is drafted before the owner has approved the story.
+- **GATE 0r (independent review of the approved story):** before any lyric, have several
+  models from different families review the approved treatment: story strength (score and the
+  biggest fix), fit to a song, fit to video (shot count, what is over-stuffed, the must-have
+  shots), hook quality with alternatives, what the viewer learns, alternative ideas, anything
+  else. Show the synthesis to the owner. The owner decides which changes to take; re-approve
+  the treatment if it changed. Only then draft lyrics.
 - **Lyrics.** Draft by section (`$P/song/lyrics-v01.txt`, a new file per version). The owner
   approves section by section. A draft is a candidate until they say so.
 - **Style strings.** One text file per style in `$P/song/styles/`. Put what decides the result
