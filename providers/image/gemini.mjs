@@ -40,13 +40,19 @@ function config() {
 export function loadRefs(refs) {
   const list = (refs || []).filter(Boolean);
   if (list.length > MAX_REFS)
-    throw new Error(`${list.length} refs given; the provider accepts ${MAX_REFS}`);
+    throw new Error(
+      `${list.length} refs given; the provider accepts ${MAX_REFS}`,
+    );
   return list.map((p) => {
     const path = resolve(p);
     const mime = REF_MIME[extname(path).toLowerCase()];
     if (!mime) throw new Error(`ref ${p}: use .png, .jpg or .webp`);
     if (!existsSync(path)) throw new Error(`ref ${p}: file not found`);
-    return { type: "image", mime_type: mime, data: readFileSync(path).toString("base64") };
+    return {
+      type: "image",
+      mime_type: mime,
+      data: readFileSync(path).toString("base64"),
+    };
   });
 }
 
@@ -56,12 +62,19 @@ export function buildImageRequest(req, cfg = {}) {
     url: BASE,
     refs_used: refs.length,
     body: {
-      model: cfg.image?.model || "gemini-3.1-flash-lite-image",
-      input: refs.length ? [{ type: "text", text: req.brief }, ...refs] : req.brief,
+      model:
+        cfg.image?.model ||
+        process.env.VF_IMAGE_MODEL ||
+        "gemini-3.1-flash-lite-image",
+      input: refs.length
+        ? [{ type: "text", text: req.brief }, ...refs]
+        : req.brief,
       response_format: {
         type: "image",
         aspect_ratio: req.aspect || "16:9",
-        image_size: "1K",
+        // Nano Banana Pro renders at 2K; the lite tier is 1K. Callers can raise it per
+        // machine via config (`image.image_size`) or per adapter via VF_IMAGE_SIZE.
+        image_size: cfg.image?.image_size || process.env.VF_IMAGE_SIZE || "1K",
       },
     },
   };
@@ -77,7 +90,7 @@ export function findImage(j) {
   return null;
 }
 
-async function main() {
+export async function main() {
   const cfg = config();
   const key = process.env.GEMINI_API_KEY || cfg.GEMINI_API_KEY;
   if (!key) fail("no GEMINI_API_KEY (env or config).", 2);

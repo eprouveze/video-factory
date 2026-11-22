@@ -1,0 +1,109 @@
+{
+  "version": "1.0",
+  "note": "20 reference shots of one person, generated from a single source photograph. Feed the output directory to produce.mjs as image refs (refs[]), or to any provider that accepts multiple reference images. Every prompt keeps identity fixed and varies only framing, angle and expression: varying wardrobe or scene would defeat the purpose.",
+  "identity_lock": "Preserve the exact identity of the person in the reference image: face structure, jawline, nose, eye shape and spacing, eyebrows, hairline and hair texture, skin tone and blemishes, age, and body build. Do not beautify, slim, age, smooth the skin, or change ethnicity.",
+  "lighting": "Soft key light from camera left at 45 degrees, subtle fill from camera right, gentle rim separation from behind. Neutral mid-grey seamless background.",
+  "camera": "Shot on a 50mm lens at eye level unless the shot states otherwise, shallow depth of field, natural colour, fine film grain, no lens distortion.",
+  "shots": [
+    {
+      "id": "01",
+      "slug": "front-neutral-medium",
+      "prompt": "Front-facing medium shot, straight on, neutral relaxed expression, mouth closed, looking directly into the lens, shoulders square to camera."
+    },
+    {
+      "id": "02",
+      "slug": "front-neutral-closeup",
+      "prompt": "Front-facing close-up from the collarbone up, neutral expression, looking directly into the lens, every facial detail in sharp focus."
+    },
+    {
+      "id": "03",
+      "slug": "three-quarter-left",
+      "prompt": "Three-quarter view from the left, medium close-up, neutral expression, face turned about 45 degrees from camera, eyes on the lens."
+    },
+    {
+      "id": "04",
+      "slug": "three-quarter-right",
+      "prompt": "Three-quarter view from the right, medium close-up, neutral expression, face turned about 45 degrees from camera, eyes on the lens."
+    },
+    {
+      "id": "05",
+      "slug": "profile-left",
+      "prompt": "True left profile, medium close-up, neutral expression, looking straight ahead off-frame, ear and jawline fully visible."
+    },
+    {
+      "id": "06",
+      "slug": "profile-right",
+      "prompt": "True right profile, medium close-up, neutral expression, looking straight ahead off-frame, ear and jawline fully visible."
+    },
+    {
+      "id": "07",
+      "slug": "front-smile",
+      "prompt": "Front-facing medium shot, warm genuine smile with visible teeth, eyes slightly narrowed by the smile, looking into the lens."
+    },
+    {
+      "id": "08",
+      "slug": "front-serious",
+      "prompt": "Front-facing medium shot, serious and composed expression, lips together, steady gaze into the lens, brow slightly lowered."
+    },
+    {
+      "id": "09",
+      "slug": "front-laughing",
+      "prompt": "Front-facing medium shot caught mid-laugh, head tilted slightly back, eyes closed with laughter, mouth open."
+    },
+    {
+      "id": "10",
+      "slug": "full-body-front",
+      "prompt": "Full-body shot head to feet, facing camera, relaxed standing pose with arms at the sides, whole figure in frame with headroom and floor visible."
+    },
+    {
+      "id": "11",
+      "slug": "full-body-left",
+      "prompt": "Full-body shot head to feet, body turned 45 degrees to the left, standing, whole figure in frame."
+    },
+    {
+      "id": "12",
+      "slug": "full-body-right",
+      "prompt": "Full-body shot head to feet, body turned 45 degrees to the right, standing, whole figure in frame."
+    },
+    {
+      "id": "13",
+      "slug": "full-body-back",
+      "prompt": "Full-body shot head to feet from directly behind, standing still, back of the head, hair and posture visible."
+    },
+    {
+      "id": "14",
+      "slug": "seated-front",
+      "prompt": "Medium shot, seated upright facing camera, hands resting on the knees, relaxed posture, head and torso in frame."
+    },
+    {
+      "id": "15",
+      "slug": "walking-toward-camera",
+      "prompt": "Full-body shot walking toward the camera mid-stride, natural gait, neutral expression, whole figure in frame."
+    },
+    {
+      "id": "16",
+      "slug": "low-angle-portrait",
+      "prompt": "Medium close-up from a low angle looking slightly up at the subject, neutral expression, chin raised, background falling away."
+    },
+    {
+      "id": "17",
+      "slug": "high-angle-portrait",
+      "prompt": "Medium close-up from a high angle looking down at the subject, neutral expression, eyes lifted to the lens."
+    },
+    {
+      "id": "18",
+      "slug": "over-shoulder-back",
+      "prompt": "Over-the-shoulder shot from behind at a three-quarter angle, head turned so part of the face and one eye are visible."
+    },
+    {
+      "id": "19",
+      "slug": "closeup-eyes",
+      "prompt": "Extreme close-up on the eyes and brow, neutral expression, catchlights visible, individual eyelashes resolved."
+    },
+    {
+      "id": "20",
+      "slug": "hands-and-torso",
+      "prompt": "Medium shot framed from the waist up with hands visible and relaxed at chest height, facing camera, neutral expression."
+    }
+  ]
+}

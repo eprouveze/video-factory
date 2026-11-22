@@ -218,3 +218,68 @@ test("camera-move.mjs CLI list, get, and build exit 0 with valid output", () => 
   assert.ok(buildOut.includes("Scene action:"));
   assert.ok(buildOut.includes("No text, no captions, no interface, no logos."));
 });
+
+test("buildClipPrompt adds a Cinematic craft block from lighting, composition, depth and colour", () => {
+  const out = buildClipPrompt({
+    move: "dolly-in",
+    brief: "A craftsman inspecting a brass gear",
+    lighting: "motivated warm tungsten key from the left, deep falloff",
+    composition: "subject positioned on the left third, leading lines to the bench",
+    depth: "foreground tools soft, midground subject sharp, workshop receding behind",
+    colour: "amber highlights against cool shadow, low saturation",
+  });
+  assert.ok(out.includes("Cinematic craft:"));
+  assert.ok(out.includes("Lighting: motivated warm tungsten key"));
+  assert.ok(out.includes("Composition: subject positioned on the left third"));
+  assert.ok(out.includes("Depth: foreground tools soft"));
+  assert.ok(out.includes("Colour: amber highlights"));
+  // Order matters: the craft block reads lighting -> composition -> depth -> colour.
+  assert.ok(
+    out.indexOf("Lighting:") < out.indexOf("Composition:") &&
+      out.indexOf("Composition:") < out.indexOf("Depth:") &&
+      out.indexOf("Depth:") < out.indexOf("Colour:"),
+  );
+});
+
+test("Cinematic craft block is omitted entirely when no craft slot is given, and is partial-safe", () => {
+  const bare = buildClipPrompt({ move: "dolly-in", brief: "A quiet room" });
+  assert.ok(!bare.includes("Cinematic craft:"));
+
+  const partial = buildClipPrompt({ move: "dolly-in", brief: "A quiet room", depth: "layered" });
+  assert.ok(partial.includes("Cinematic craft:\nDepth: layered"));
+  assert.ok(!partial.includes("Lighting:"));
+  assert.ok(!partial.includes("Composition:"));
+});
+
+test("`color` is accepted as an alias for `colour`", () => {
+  const out = buildClipPrompt({ move: "dolly-in", brief: "x", color: "teal and orange" });
+  assert.ok(out.includes("Colour: teal and orange"));
+});
+
+test("camera-move.mjs build passes the four craft flags through to the prompt", () => {
+  const out = execFileSync(
+    "node",
+    [
+      CLI_PATH,
+      "build",
+      "--move",
+      "dolly-in",
+      "--brief",
+      "A tailor at a lit counter",
+      "--lighting",
+      "single soft window key",
+      "--composition",
+      "centred, symmetrical",
+      "--depth",
+      "shallow, background dissolving",
+      "--colour",
+      "muted olive",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.ok(out.includes("Cinematic craft:"));
+  assert.ok(out.includes("Lighting: single soft window key"));
+  assert.ok(out.includes("Composition: centred, symmetrical"));
+  assert.ok(out.includes("Depth: shallow, background dissolving"));
+  assert.ok(out.includes("Colour: muted olive"));
+});

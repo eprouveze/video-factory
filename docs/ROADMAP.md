@@ -23,8 +23,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ planned · 🔭 deferred
 ## Phase 0.2: Generative video, stills & sound
 **Goal:** real footage + score, with reference-frame discipline that controls cost and drift.
 
-- ✅ `image` adapters: Gemini 3.1 Flash Lite Image, OpenAI `gpt-image-2.6-sunburst`, and
-  MiniMax H3 Image (`MiniMax-H3-Image`) with multi-reference support (`refs: true`)
+- ✅ `image` adapters: Gemini 3.1 Flash Lite Image, Nano Banana Pro (`gemini-3-pro-image`, 2K,
+  opt-in), OpenAI `gpt-image-2.6-sunburst`, and MiniMax H3 Image (`MiniMax-H3-Image`) with
+  multi-reference support (`refs: true`)
+- ✅ identity sheets: `scripts/identity-sheet.mjs` builds a 20-shot reference set from one photo
+  (`skills/identity-sheet`), for multi-shot face consistency without a trained identity model
+- ✅ cinematic craft slots on the build prompt: `--lighting --composition --depth --colour`
 - ✅ `clip` adapters: **MiniMax H3 (`MiniMax-H3`, default)** with first/last-frame transitions,
   reference image/audio/video mode, 768P -> 2K regeneration, and pre-call gates; Gemini Omni 1.2
   Flash; OpenRouter async video (`alibaba/wan-2.7`); Kling direct

@@ -1,8 +1,10 @@
 {
   "name": "video-factory",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Agent-driven video and music-video production. Claude authors a human-reviewable manifest, then assembles films from swappable provider components (MiniMax H3 video & image, ElevenLabs TTS/Scribe/music, 46 camera movements, Remotion compositor). Zero-key core runs with no API keys; tiers light up as you add credentials.",
-  "author": { "name": "Emmanuel Prouvèze" },
+  "author": {
+    "name": "Emmanuel Prouv\u00e8ze"
+  },
   "homepage": "https://github.com/eprouveze/video-factory",
   "repository": "https://github.com/eprouveze/video-factory",
   "license": "MIT",

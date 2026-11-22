@@ -69,6 +69,17 @@
           "est_as_of": "2026-11-12",
           "est_note": "1K image output: 1,120 tokens at $30.00 per 1M image-output tokens."
         },
+        "nano-banana-pro": {
+          "path": "providers/image/nano-banana-pro.mjs",
+          "refs": true,
+          "tier": "plugin",
+          "needs": ["GEMINI_API_KEY"],
+          "note": "Nano Banana Pro (`gemini-3-pro-image`) via the same Gemini Interactions adapter, at 2K. OPT-IN quality tier for start frames: 4x the lite price, so it is not the default. Select per scene with provider_assignments: {\"image\": \"nano-banana-pro\"}.",
+          "est_usd": 0.134,
+          "est_source": "https://aistudio.google.com/docs/pricing",
+          "est_as_of": "2026-11-22",
+          "est_note": "Published flat $0.134 per image at 1K or 2K (2,000 image-output tokens at $120.00 per 1M); $0.24 at 4K. 4x the flash-lite default ($0.0336)."
+        },
         "gpt-image": {
           "path": "providers/image/gpt-image.mjs",
           "refs": true,
