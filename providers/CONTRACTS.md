@@ -68,13 +68,17 @@ which is which.
 ```jsonc
 { "brief": "...", "aspect": "9:16", "duration_s": 8,
   "ref_frame": "assets/s3.png",   // reference-frame lock for continuity
+  "last_frame": "assets/s4.png",  // optional end frame for first+last frame transitions
   "seed": 42, "out_path": "clips/s3.mp4" }
 // out
-{ "clip_path": "clips/s3.mp4", "duration_ms": 8000 }
+{ "clip_path": "clips/s3.mp4", "duration_ms": 8000, "task_id": "..." }
 ```
 
-The MiniMax adapter also accepts `ref_images[]` and `ref_audio[]` (reference mode, not mixable with
-`ref_frame`) and fails before the API call on an image aspect ratio outside [0.4, 2.5] or non-`.wav` audio.
+The default MiniMax H3 adapter (`providers/clip/minimax.mjs`) supports:
+- First/last-frame continuity (`ref_frame`, `last_frame`), not mixable with reference mode.
+- Reference mode (`ref_images[]`, `ref_audio[]`, `ref_videos[]`) for identity lock, `.wav` vocal-stem lip-sync, and motion blueprints.
+- Two-stage 768P to 2K regeneration via `/v2/video_regeneration` using either `source_task_id` or `base_video` + `brief`.
+- Pre-call gates that fail before any billed API request on unfilled `[UPPER_CASE]` placeholders, reference image aspect ratio outside `[0.4, 2.5]`, non-`.wav` reference audio, mixing first/last frame with reference inputs, or reference videos exceeding MiniMax limits (at most 3 `.mp4`/`.mov` files, 50 MB each, 2 to 15 s each, 15 s total).
 
 ### `music` — brief → track
 ```jsonc

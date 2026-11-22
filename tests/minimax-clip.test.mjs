@@ -1,20 +1,31 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  buildMinimaxRegenRequest,
   buildMinimaxRequest,
+  checkPlaceholders,
+  checkRefVideos,
   clampDuration,
   costUsd,
+  imageSize,
   mapRatio,
   pickTask,
   queryUrl,
   resultUrl,
   taskError,
   taskState,
-  imageSize,
 } from "../providers/clip/minimax.mjs";
+
+test("registry defaults clip capability to minimax", () => {
+  const registry = JSON.parse(
+    readFileSync(new URL("../providers/providers.json", import.meta.url), "utf8"),
+  );
+  assert.equal(registry.capabilities.clip.default, "minimax");
+  assert.equal(registry.capabilities.clip.adapters.minimax.est_usd, 0.08);
+});
 
 test("minimax builds a text-only request", () => {
   const { url, body } = buildMinimaxRequest({
@@ -58,6 +69,33 @@ test("minimax sends the ref frame as a first_frame data URL", () => {
   assert.equal(body.ratio, "adaptive");
 });
 
+test("minimax supports first_frame + last_frame transitions", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const first = join(dir, "first.png");
+  const last = join(dir, "last.png");
+  writeFileSync(first, Buffer.from([1, 2, 3]));
+  writeFileSync(last, Buffer.from([4, 5, 6]));
+  const { body } = buildMinimaxRequest({
+    brief: "slow dolly transition",
+    ref_frame: first,
+    last_frame: last,
+  });
+  assert.deepEqual(body.content, [
+    { type: "text", text: "slow dolly transition" },
+    {
+      type: "image_url",
+      image_url: { url: "data:image/png;base64,AQID" },
+      role: "first_frame",
+    },
+    {
+      type: "image_url",
+      image_url: { url: "data:image/png;base64,BAUG" },
+      role: "last_frame",
+    },
+  ]);
+  assert.equal(body.ratio, "adaptive");
+});
+
 test("minimax clamps duration to 4-15 s, default 8", () => {
   assert.equal(clampDuration(1), 4);
   assert.equal(clampDuration(99), 15);
@@ -76,8 +114,11 @@ test("minimax maps aspect to supported ratios", () => {
 
 test("minimax task state for each status", () => {
   assert.equal(taskState({ status: "succeeded" }), "done");
+  assert.equal(taskState({ status: "success" }), "done");
   assert.equal(taskState({ status: "failed" }), "failed");
+  assert.equal(taskState({ status: "fail" }), "failed");
   assert.equal(taskState({ status: "cancelled" }), "failed");
+  assert.equal(taskState({ status: "expired" }), "failed");
   assert.equal(taskState({ status: "queued" }), "pending");
   assert.equal(taskState({ status: "running" }), "pending");
   assert.equal(taskState(null), "pending");
@@ -162,15 +203,110 @@ test("minimax gate: reference audio must be .wav", () => {
   );
 });
 
-test("minimax gate: first frame cannot mix with reference mode", () => {
+test("minimax gate: first/last frame cannot mix with reference mode", () => {
   const dir = mkdtempSync(join(tmpdir(), "mm-"));
   const f = join(dir, "f.png");
   const w = join(dir, "a.wav");
+  const v = join(dir, "m.mp4");
   writeFileSync(f, png(100, 100));
   writeFileSync(w, Buffer.from([1]));
+  writeFileSync(v, Buffer.from([1, 2, 3]));
   assert.throws(
     () => buildMinimaxRequest({ brief: "x", ref_frame: f, ref_audio: [w] }),
     /choose one mode/,
+  );
+  assert.throws(
+    () => buildMinimaxRequest({ brief: "x", last_frame: f, ref_videos: [v] }, { _probeDuration: () => 5 }),
+    /choose one mode/,
+  );
+});
+
+test("minimax gate: reference videos enforce format, count and duration limits", () => {
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const v1 = join(dir, "v1.mp4");
+  const v2 = join(dir, "v2.mov");
+  const v3 = join(dir, "v3.mp4");
+  const v4 = join(dir, "v4.mp4");
+  const bad = join(dir, "bad.mkv");
+  for (const p of [v1, v2, v3, v4, bad]) writeFileSync(p, Buffer.from([1, 2, 3]));
+
+  const { body } = buildMinimaxRequest(
+    { brief: "follow camera blueprint", ref_videos: [v1, v2] },
+    { _probeDuration: () => 5 },
+  );
+  assert.equal(body.content[1].role, "reference_video");
+  assert.equal(body.content[1].video_url.url, "data:video/mp4;base64,AQID");
+  assert.equal(body.content[2].video_url.url, "data:video/quicktime;base64,AQID");
+  assert.equal(body.ratio, "adaptive");
+
+  assert.throws(
+    () => checkRefVideos([v1, v2, v3, v4], () => 3),
+    /at most 3 reference videos/,
+  );
+  assert.throws(
+    () => checkRefVideos([bad], () => 5),
+    /must be \.mp4 or \.mov/,
+  );
+  assert.throws(
+    () => checkRefVideos([v1], () => 1.5),
+    /must last 2 to 15 s/,
+  );
+  assert.throws(
+    () => checkRefVideos([v1, v2], () => 9),
+    /total 18\.00 s, limit is 15 s/,
+  );
+});
+
+test("minimax gate: unfilled uppercase placeholders are refused before billing", () => {
+  assert.doesNotThrow(() => checkPlaceholders("a steady shot of [a] quiet room"));
+  assert.throws(
+    () => buildMinimaxRequest({ brief: "Wide shot of [WORKERS] near [HERO_PROP]" }),
+    /unfilled placeholder\(s\) \[HERO_PROP\], \[WORKERS\]/,
+  );
+});
+
+test("minimax 768P -> 2K regeneration builds source_task_id and base_video requests", () => {
+  const byTask = buildMinimaxRequest({ source_task_id: "424010985738629" });
+  assert.equal(byTask.url, "https://api.minimax.io/v2/video_regeneration");
+  assert.equal(byTask.regen, true);
+  assert.deepEqual(byTask.body, {
+    model: "MiniMax-H3",
+    source_task_id: "424010985738629",
+    resolution: "2K",
+  });
+
+  const dir = mkdtempSync(join(tmpdir(), "mm-"));
+  const base = join(dir, "take768.mp4");
+  const first = join(dir, "first.png");
+  const last = join(dir, "last.png");
+  writeFileSync(base, Buffer.from([7, 8, 9]));
+  writeFileSync(first, Buffer.from([1, 2, 3]));
+  writeFileSync(last, Buffer.from([4, 5, 6]));
+  const byVideo = buildMinimaxRegenRequest({
+    base_video: base,
+    brief: "same shot in 2K",
+    ref_frame: first,
+    last_frame: last,
+  });
+  assert.equal(byVideo.url, "https://api.minimax.io/v2/video_regeneration");
+  assert.equal(byVideo.body.resolution, "2K");
+  assert.equal(byVideo.body.generate_audio, false);
+  assert.deepEqual(
+    byVideo.body.content.map((c) => c.role || c.type),
+    ["text", "base_video", "first_frame", "last_frame"],
+  );
+
+  assert.throws(
+    () => buildMinimaxRegenRequest({ source_task_id: "1", base_video: base, brief: "x" }),
+    /exactly one of source_task_id or base_video/,
+  );
+  assert.throws(
+    () => buildMinimaxRegenRequest({ base_video: base }),
+    /requires brief/,
+  );
+  assert.throws(
+    () => buildMinimaxRegenRequest({ base_video: base, brief: "fix [UNFILLED_SLOT]" }),
+    /unfilled placeholder/,
   );
 });
 
