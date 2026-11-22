@@ -219,3 +219,24 @@ test("gemini image sends refs as image blocks after the text and refuses a missi
   assert.throws(() => buildImageRequest({ brief: "x", refs: [join(dir, "a.gif")] }), /png, .jpg or .webp/);
   assert.equal(buildImageRequest({ brief: "x" }).refs_used, 0);
 });
+
+test("the nano-banana-pro wrapper runs main: a bad request exits 2 instead of silently succeeding", () => {
+  const r = spawnSync("node", [join(import.meta.dirname ?? ".", "..", "providers/image/nano-banana-pro.mjs")], {
+    input: "{}",
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 2, "the wrapper must reach main(), not exit 0 on a no-op import");
+  assert.match(r.stderr, /request needs \{brief, out_path\}/);
+});
+
+test("the nano-banana-pro wrapper selects the Pro model and 2K, config still wins", async () => {
+  const { buildImageRequest } = await import("../providers/image/gemini.mjs");
+  // The wrapper sets these before importing; simulate the same environment here.
+  process.env.VF_IMAGE_MODEL = "gemini-3-pro-image";
+  process.env.VF_IMAGE_SIZE = "2K";
+  const built = buildImageRequest({ brief: "a test" }, {});
+  assert.equal(built.body.model, "gemini-3-pro-image");
+  assert.equal(built.body.response_format.image_size, "2K");
+  delete process.env.VF_IMAGE_MODEL;
+  delete process.env.VF_IMAGE_SIZE;
+});

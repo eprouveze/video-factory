@@ -47,13 +47,18 @@ export function getMove(idOrSlug) {
     moves.find((m) => m.id.toUpperCase() === upper) ||
     moves.find((m) => m.slug.toLowerCase() === norm) ||
     moves.find((m) => normalizeKey(m.name) === norm) ||
-    moves.find((m) => (m.aliases || []).some((a) => normalizeKey(a) === norm)) ||
+    moves.find((m) =>
+      (m.aliases || []).some((a) => normalizeKey(a) === norm),
+    ) ||
     null
   );
 }
 
 export function formatCameraBlock(idOrSlug) {
-  const move = typeof idOrSlug === "object" && idOrSlug?.prompt ? idOrSlug : getMove(idOrSlug);
+  const move =
+    typeof idOrSlug === "object" && idOrSlug?.prompt
+      ? idOrSlug
+      : getMove(idOrSlug);
   if (!move) {
     throw new Error(
       `Unknown camera movement "${idOrSlug}". Run \`node scripts/camera-move.mjs list\` to see all 46 movements.`,
@@ -67,6 +72,27 @@ export const DEFAULT_REF_LOCK_NOTE =
 
 export const NO_TEXT_GUARD = "No text, no captions, no interface, no logos.";
 
+// The four levers that separate a flat image from a cinematic one, in the order the
+// build prompt reads them. Each is optional and independent: a caller that supplies only
+// `lighting` gets a one-line craft block, not four empty labels.
+export const CRAFT_SLOTS = [
+  ["lighting", "Lighting"],
+  ["composition", "Composition"],
+  ["depth", "Depth"],
+  ["colour", "Colour"],
+];
+
+export function formatCraftBlock(craft = {}) {
+  const lines = [];
+  for (const [key, label] of CRAFT_SLOTS) {
+    // `color` is accepted as an alias so a US-spelling caller is not silently dropped.
+    const raw = key === "colour" ? (craft.colour ?? craft.color) : craft[key];
+    const value = String(raw || "").trim();
+    if (value) lines.push(`${label}: ${value}`);
+  }
+  return lines.join("\n");
+}
+
 export function buildClipPrompt({
   move,
   brief = "",
@@ -74,29 +100,41 @@ export function buildClipPrompt({
   refContext = "",
   styleSuffix = "",
   noTextGuard = false,
+  lighting = "",
+  composition = "",
+  depth = "",
+  colour = "",
+  color = "",
 } = {}) {
   const cleanBrief = String(brief || "").trim();
   const cleanStyle = String(styleSuffix || "").trim();
   const cleanRefContext = String(refContext || "").trim();
+  const cleanCraft = formatCraftBlock({
+    lighting,
+    composition,
+    depth,
+    colour: colour || color,
+  });
 
   if (!move) {
-    const combined = [cleanBrief, cleanStyle].filter(Boolean).join(" ");
+    const combined = [cleanBrief, cleanStyle, cleanCraft]
+      .filter(Boolean)
+      .join(" ");
     if (noTextGuard && !/no text,\s*no captions/i.test(combined)) {
       return [combined, NO_TEXT_GUARD].filter(Boolean).join(" ").trim();
     }
     return combined;
   }
 
-  const resolved = typeof move === "object" && move?.prompt ? move : getMove(move);
+  const resolved =
+    typeof move === "object" && move?.prompt ? move : getMove(move);
   if (!resolved) {
     throw new Error(
       `Unknown camera movement "${move}". Run \`node scripts/camera-move.mjs list\` to see all 46 movements.`,
     );
   }
 
-  const sections = [
-    `Camera movement:\n${resolved.prompt}`,
-  ];
+  const sections = [`Camera movement:\n${resolved.prompt}`];
 
   if (refFrame || cleanRefContext) {
     const refLines = [
@@ -114,6 +152,10 @@ export function buildClipPrompt({
 
   if (cleanStyle) {
     sections.push(`Mood and style:\n${cleanStyle}`);
+  }
+
+  if (cleanCraft) {
+    sections.push(`Cinematic craft:\n${cleanCraft}`);
   }
 
   if (noTextGuard && !/no text,\s*no captions/i.test(cleanBrief)) {

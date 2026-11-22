@@ -5,14 +5,11 @@
 //   node scripts/camera-move.mjs list [--category <cat>] [--json]
 //   node scripts/camera-move.mjs get <id-or-slug> [--json]
 //   node scripts/camera-move.mjs build --move <id-or-slug> --brief "<scene>" [--ref-context "<text>"] [--style "<suffix>"] [--no-text-guard]
+//                                      [--lighting "<text>"] [--composition "<text>"] [--depth "<text>"] [--colour "<text>"]
 
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  listMoves,
-  getMove,
-  buildClipPrompt,
-} from "./lib/camera-moves.mjs";
+import { listMoves, getMove, buildClipPrompt } from "./lib/camera-moves.mjs";
 
 function usage() {
   process.stderr.write(
@@ -20,7 +17,8 @@ function usage() {
       "Usage:",
       "  node scripts/camera-move.mjs list [--category <category>] [--json]",
       "  node scripts/camera-move.mjs get <id-or-slug> [--json]",
-      "  node scripts/camera-move.mjs build --move <id-or-slug> --brief \"<scene>\" [--ref-context \"<text>\"] [--style \"<suffix>\"] [--no-text-guard]",
+      '  node scripts/camera-move.mjs build --move <id-or-slug> --brief "<scene>" [--ref-context "<text>"] [--style "<suffix>"] [--no-text-guard]',
+      '                                  [--lighting "<text>"] [--composition "<text>"] [--depth "<text>"] [--colour "<text>"]',
       "",
     ].join("\n"),
   );
@@ -32,7 +30,13 @@ function parseArgs(argv) {
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--json" || a === "--no-text-guard" || a === "--ref-frame" || a === "--help" || a === "-h") {
+    if (
+      a === "--json" ||
+      a === "--no-text-guard" ||
+      a === "--ref-frame" ||
+      a === "--help" ||
+      a === "-h"
+    ) {
       flags.add(a);
     } else if (a.startsWith("--")) {
       const key = a.slice(2);
@@ -119,10 +123,16 @@ if (
       const out = buildClipPrompt({
         move: moveArg,
         brief: opts.brief || "",
-        refFrame: flags.has("--ref-frame") ? "ref.png" : opts["ref-frame"] || null,
+        refFrame: flags.has("--ref-frame")
+          ? "ref.png"
+          : opts["ref-frame"] || null,
         refContext: opts["ref-context"] || "",
         styleSuffix: opts.style || "",
         noTextGuard: flags.has("--no-text-guard"),
+        lighting: opts.lighting || "",
+        composition: opts.composition || "",
+        depth: opts.depth || "",
+        colour: opts.colour || opts.color || "",
       });
       process.stdout.write(out + "\n");
       process.exit(0);
