@@ -28,10 +28,10 @@ is: references, not a model.
 ## Run it
 
 ```bash
-# cheap pass first (Gemini 3.1 Flash Lite, ~$0.0336/image -> ~$0.67 for the sheet) — the default
+# the default adapter: gpt-image-2.6-sunburst, ~$0.02/image -> ~$0.40 for the sheet
 node scripts/identity-sheet.mjs --source photo.jpg --out identity/me
 
-# quality pass (Nano Banana Pro at 2K, ~$0.134/image -> ~$2.68 for the full sheet)
+# 2K alternative (Nano Banana Pro, ~$0.134/image -> ~$2.68 for the full sheet)
 node scripts/identity-sheet.mjs --source photo.jpg --out identity/me --adapter nano-banana-pro
 
 # a subset, or a redo after swapping one prompt

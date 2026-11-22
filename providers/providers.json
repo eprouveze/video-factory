@@ -56,7 +56,7 @@
       }
     },
     "image": {
-      "default": "gemini-imagen",
+      "default": "gpt-image",
       "adapters": {
         "gemini-imagen": {
           "path": "providers/image/gemini.mjs",
@@ -85,11 +85,11 @@
           "refs": true,
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY"],
-          "note": "OpenAI gpt-image-2.6-sunburst (OpenAI's named replacement for gpt-image-2, which is removed 2027-02-10). VERIFIED 2026-11-12: one live 1536x1024 image, text rendered correctly. Set image.openai_model to gpt-image-2.6-flare for the faster model.",
-          "est_usd": 0.02,
+          "note": "DEFAULT image adapter. OpenAI gpt-image-2.6-sunburst, ranked #1 on the Artificial Analysis text-to-image board (1263 Elo, 2026-11-22) ahead of Nano Banana Pro by 144. VERIFIED 2026-11-12: one live 1536x1024 image, text rendered correctly. Set image.openai_model to gpt-image-2.6-flare for the faster model.",
+          "est_usd": 0.053,
           "est_source": "https://developers.openai.com/api/docs/pricing",
-          "est_as_of": "2026-11-12",
-          "est_note": "$30 per 1M image-output tokens (published) x 664 output tokens measured on one 1536x1024 image at the default quality on 2026-11-12. One sample: token use varies by prompt and quality. The adapter reports the real cost_usd from each response's usage."
+          "est_as_of": "2026-11-22",
+          "est_note": "$30 per 1M image-output tokens (published). Two live 1:1 measurements now disagree by 2.6x: 664 output tokens / $0.020 on 2026-11-12, and 1,756 tokens / $0.0528 on 2026-11-22 (a still-life prompt at default quality). Token use tracks prompt complexity and quality, so treat $0.05 as the planning figure for a realistic prompt and read cost_usd from the response; a 20-shot identity sheet is nearer $1.06 than the $0.40 the old figure implied."
         },
         "minimax": {
           "path": "providers/image/minimax.mjs",

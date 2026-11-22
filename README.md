@@ -145,7 +145,7 @@ sets total duration, and every shot tiles `[0, duration]` on the beat map.
 | --- | --- | --- |
 | **Core** | code-animated scenes, multi-format render, looks (ffmpeg), `say` voice | just Node + ffmpeg |
 | Voice | natural narration + word-timed captions | `ELEVENLABS_API_KEY` |
-| Images | generative stills, reference-frame lock, 2K repaints, identity sheets | `GEMINI_API_KEY` (default; `nano-banana-pro` for the 2K quality tier), `MINIMAX_API_KEY` (MiniMax H3 Image), or `OPENAI_API_KEY` (gpt-image) |
+| Images | generative stills, reference-frame lock, 2K repaints, identity sheets | `OPENAI_API_KEY` (default: gpt-image-2.6-sunburst), `GEMINI_API_KEY` (`nano-banana-pro` for the 2K tier), or `MINIMAX_API_KEY` (MiniMax H3 Image) |
 | Video clips (primary shots, lip-sync & b-roll) | primary narrative shots, audio-driven lip-sync, first/last-frame transitions, 2K regen, b-roll | `MINIMAX_API_KEY` (default, MiniMax H3), `GEMINI_API_KEY` (Omni), `OPENROUTER_API_KEY`, or `KLING_API_KEY` |
 | Captions (precise) | word-level timestamps | `ELEVENLABS_API_KEY` (Scribe, default) or `OPENAI_API_KEY` (whisper-1) |
 | Music + SFX | score + sound design | `ELEVENLABS_API_KEY` |
