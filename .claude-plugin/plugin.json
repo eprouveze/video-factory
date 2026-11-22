@@ -1,19 +1,22 @@
 {
   "name": "video-factory",
-  "version": "0.1.0",
-  "description": "Agent-driven video production. Claude authors a human-reviewable manifest, then assembles incredible videos from swappable provider components (TTS, b-roll, music, captions, avatar) — Remotion as the headless compositor. Zero-key core runs with no API keys; tiers light up as you add credentials.",
+  "version": "0.3.0",
+  "description": "Agent-driven video and music-video production. Claude authors a human-reviewable manifest, then assembles films from swappable provider components (MiniMax H3 video & image, ElevenLabs TTS/Scribe/music, 46 camera movements, Remotion compositor). Zero-key core runs with no API keys; tiers light up as you add credentials.",
   "author": { "name": "Emmanuel Prouvèze" },
   "homepage": "https://github.com/eprouveze/video-factory",
   "repository": "https://github.com/eprouveze/video-factory",
   "license": "MIT",
   "keywords": [
     "video",
+    "music-video",
+    "minimax",
+    "hailuo",
     "remotion",
     "tts",
     "elevenlabs",
-    "b-roll",
+    "lipsync",
+    "camera-movements",
     "captions",
-    "avatar",
     "agent-native",
     "manifest"
   ]

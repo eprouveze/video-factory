@@ -238,6 +238,7 @@ for (let i = 0; i < scenes.length; i++) {
         ? alignDisplayWords(s.tts_script, r.word_timings)
         : r.word_timings;
       s.duration_ms = r.duration_ms; // TTS-first write-back
+      s._audio = join("audio", `${s.id}.mp3`);
       s.word_timings = (rawTimings || []).map((t) => ({
         ...t,
         start_ms: Math.min(t.start_ms, Math.max(0, s.duration_ms - 20)),

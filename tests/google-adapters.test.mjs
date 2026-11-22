@@ -148,14 +148,13 @@ test("omni reads REST video output and file id", () => {
   );
 });
 
-test("registry defaults to omni and veo fails fast without network", () => {
+test("registry prices google adapters and veo fails fast without network", () => {
   const registry = JSON.parse(
     readFileSync(
       new URL("../providers/providers.json", import.meta.url),
       "utf8",
     ),
   );
-  assert.equal(registry.capabilities.clip.default, "omni");
   assert.equal(registry.capabilities.clip.adapters.omni.est_usd, 0.07);
   assert.equal(
     registry.capabilities.image.adapters["gemini-imagen"].est_usd,
