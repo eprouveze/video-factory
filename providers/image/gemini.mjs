@@ -5,6 +5,7 @@
 // refs are sent as image content blocks after the text, as the Interactions API documents.
 // Key from env GEMINI_API_KEY or config GEMINI_API_KEY (x-goog-api-key) — never args.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { sniffImageMime, pathMatchingMime } from "./lib/format.mjs";
 import { dirname, extname, resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -45,13 +46,18 @@ export function loadRefs(refs) {
     );
   return list.map((p) => {
     const path = resolve(p);
-    const mime = REF_MIME[extname(path).toLowerCase()];
-    if (!mime) throw new Error(`ref ${p}: use .png, .jpg or .webp`);
+    const extMime = REF_MIME[extname(path).toLowerCase()];
+    if (!extMime) throw new Error(`ref ${p}: use .png, .jpg or .webp`);
     if (!existsSync(path)) throw new Error(`ref ${p}: file not found`);
+    // The extension decides what is *allowed*; the bytes decide what it actually is. A .png
+    // holding JPEG data (which this very adapter produced before 2026-11-23) must not be
+    // sent as image/png.
+    const bytes = readFileSync(path);
+    const mime = sniffImageMime(bytes) || extMime;
     return {
       type: "image",
       mime_type: mime,
-      data: readFileSync(path).toString("base64"),
+      data: bytes.toString("base64"),
     };
   });
 }
@@ -128,10 +134,21 @@ export async function main() {
   const data = findImage(j);
   if (!data) fail(`no image in response: ${JSON.stringify(j).slice(0, 300)}`);
 
-  const out = resolve(req.out_path);
+  // Gemini returns whatever the model emits: flash tiers give PNG, gemini-3-pro-image gives
+  // JPEG. Writing those bytes to a caller-supplied `.png` path produces a file that lies
+  // about itself, so the path is corrected to match the bytes and the truth is reported.
+  const bytes = Buffer.from(data, "base64");
+  const mime = sniffImageMime(bytes);
+  const requested = resolve(req.out_path);
+  const out = mime ? pathMatchingMime(requested, mime) : requested;
+  if (out !== requested)
+    log(`provider returned ${mime}; writing ${out} instead of ${req.out_path}`);
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, Buffer.from(data, "base64"));
-  process.stdout.write(JSON.stringify({ image_path: out, refs_used }) + "\n");
+  writeFileSync(out, bytes);
+  process.stdout.write(
+    JSON.stringify({ image_path: out, refs_used, mime_type: mime || null }) +
+      "\n",
+  );
 }
 
 if (

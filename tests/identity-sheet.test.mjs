@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
@@ -60,12 +60,28 @@ test("nano-banana-pro is registered as an image adapter with a cost estimate", (
   assert.equal(a.refs, true);
   assert.equal(
     reg.capabilities.image.default,
-    "gemini-imagen",
-    "the cheap adapter stays the default",
+    "gpt-image",
+    "gpt-image-2.6-sunburst is the default: #1 on the AA image board, 144 Elo ahead",
   );
+  const def = reg.capabilities.image.adapters[reg.capabilities.image.default];
+  assert.equal(def.refs, true, "the default must accept reference images");
   assert.ok(
-    a.est_usd > reg.capabilities.image.adapters["gemini-imagen"].est_usd,
+    a.est_usd > def.est_usd,
+    "nano-banana-pro stays the expensive opt-in, not the default",
   );
+  // Every image adapter that actually exists must declare whether it takes refs, or the refs
+  // guard in produce.mjs cannot reason about it. Declared-but-unbuilt placeholders
+  // (fal-flux, ideogram) are exempt until their adapter file lands.
+  for (const [name, adapter] of Object.entries(
+    reg.capabilities.image.adapters,
+  )) {
+    if (!existsSync(join(ROOT, adapter.path))) continue;
+    assert.equal(
+      typeof adapter.refs,
+      "boolean",
+      `${name} must declare refs: true|false`,
+    );
+  }
 });
 
 test("gemini adapter honours VF_IMAGE_MODEL and VF_IMAGE_SIZE overrides", async () => {

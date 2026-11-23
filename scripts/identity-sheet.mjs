@@ -64,8 +64,9 @@ function usage() {
       "                                   [--aspect 1:1] [--only 01,02] [--force] [--dry-run] [--json]",
       "",
       "Adapters are the image capability from providers/providers.json.",
-      "Default adapter: gemini-imagen (~$0.034/shot). Use --adapter nano-banana-pro for the 2K",
-      "quality pass (~$0.134/shot); a full 20-shot sheet costs about $0.67 or $2.68.",
+      "Default adapter: gpt-image-2.6-sunburst (~$0.02/shot, #1 on the AA image board).",
+      "--adapter nano-banana-pro is the 2K alternative (~$0.134/shot); a full 20-shot",
+      "sheet therefore costs roughly $0.40 or $2.68.",
     ].join("\n"),
   );
 }
