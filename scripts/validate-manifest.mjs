@@ -437,6 +437,28 @@ export function validate(manifest, { registry, requireApproval = false } = {}) {
           `plate is a near-duplicate of "${looks[i].id}"; one image per shot`,
         );
 
+  // ── aspect ─────────────────────────────────────────────────────────────────────────
+  // Warn when a scene's image provider cannot produce one of the manifest's formats, so the
+  // crop is a decision on record instead of a surprise in the compositor. Only fires for
+  // adapters that declare `native_aspects`; undeclared providers are left alone.
+  const imgReg = registry?.capabilities?.image;
+  if (imgReg) {
+    for (const s of scenes) {
+      const provider = s.provider_assignments?.image || imgReg.default;
+      const adapter = imgReg.adapters?.[provider];
+      const native = adapter?.native_aspects;
+      if (!Array.isArray(native) || !native.length) continue;
+      for (const fmt of manifest.format ?? []) {
+        if (!native.includes(fmt))
+          warn(
+            "aspect",
+            s.id,
+            `${provider} cannot produce ${fmt} natively (it offers ${native.join(", ")}); this still will be cropped`,
+          );
+      }
+    }
+  }
+
   return {
     pass: errors.length === 0,
     errors,

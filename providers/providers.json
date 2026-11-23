@@ -59,6 +59,7 @@
       "default": "gpt-image",
       "adapters": {
         "gemini-imagen": {
+          "native_aspects": ["16:9", "9:16", "1:1"],
           "path": "providers/image/gemini.mjs",
           "refs": true,
           "tier": "plugin",
@@ -70,6 +71,7 @@
           "est_note": "1K image output: 1,120 tokens at $30.00 per 1M image-output tokens."
         },
         "nano-banana-pro": {
+          "native_aspects": ["16:9", "9:16", "1:1"],
           "path": "providers/image/nano-banana-pro.mjs",
           "refs": true,
           "tier": "plugin",
@@ -81,11 +83,12 @@
           "est_note": "Published flat $0.134 per image at 1K or 2K (2,000 image-output tokens at $120.00 per 1M); $0.24 at 4K. 4x the flash-lite default ($0.0336)."
         },
         "gpt-image": {
+          "native_aspects": ["3:2", "2:3", "1:1"],
           "path": "providers/image/gpt-image.mjs",
           "refs": true,
           "tier": "plugin",
           "needs": ["OPENAI_API_KEY"],
-          "note": "DEFAULT image adapter. OpenAI gpt-image-2.6-sunburst, ranked #1 on the Artificial Analysis text-to-image board (1263 Elo, 2026-11-22) ahead of Nano Banana Pro by 144. VERIFIED 2026-11-12: one live 1536x1024 image, text rendered correctly. Set image.openai_model to gpt-image-2.6-flare for the faster model.",
+          "note": "DEFAULT image adapter. OpenAI gpt-image-2.6-sunburst, ranked #1 on the Artificial Analysis text-to-image board (1263 Elo, 2026-11-22) ahead of Nano Banana Pro by 144. VERIFIED 2026-11-12: one live 1536x1024 image, text rendered correctly. Set image.openai_model to gpt-image-2.6-flare for the faster model. NO native 16:9 (see native_aspects): a 16:9 request is served at 3:2 and the adapter returns aspect_actual + crop_required. Gemini-backed adapters may return JPEG bytes; their path is corrected to match.",
           "est_usd": 0.053,
           "est_source": "https://developers.openai.com/api/docs/pricing",
           "est_as_of": "2026-11-22",
